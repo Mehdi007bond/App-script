@@ -1,658 +1,2219 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Global Shipment Dashboard</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVkdf3G0tTiKcS6CXizkRCFW3cvclWIKVcQ==" crossorigin="anonymous"><\/script>
-  <style>
-    :root {
-      --bg-dark: #0a0e1a;
-      --bg-panel: #0f1626;
-      --bg-card: #141e33;
-      --accent-blue: #00d4ff;
-      --accent-green: #00ff88;
-      --accent-orange: #ff6b35;
-      --accent-purple: #9b59ff;
-      --accent-yellow: #ffd700;
-      --text-primary: #e0e8ff;
-      --text-secondary: #7a90b8;
-      --border-color: #1e3060;
-      --danger: #ff4757;
-      --warning: #ffa502;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Segoe UI', Arial, sans-serif;
-      background: var(--bg-dark);
-      color: var(--text-primary);
-      min-height: 100vh;
-      overflow-x: hidden;
-    }
-    header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 14px 28px;
-      background: var(--bg-panel);
-      border-bottom: 1px solid var(--border-color);
-      position: sticky; top: 0; z-index: 100;
-    }
-    .header-title { display: flex; align-items: center; gap: 12px; }
-    .logo {
-      width: 38px; height: 38px;
-      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px; font-weight: bold;
-    }
-    .header-title h1 {
-      font-size: 1.25rem; font-weight: 700;
-      background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    }
-    .header-title p { font-size: 0.72rem; color: var(--text-secondary); }
-    .header-right { display: flex; align-items: center; gap: 14px; }
-    #live-time { font-size: 0.8rem; color: var(--text-secondary); }
-    .view-tabs {
-      display: flex; gap: 4px;
-      padding: 10px 28px;
-      background: var(--bg-panel);
-      border-bottom: 1px solid var(--border-color);
-    }
-    .tab-btn {
-      padding: 7px 22px;
-      border: 1px solid var(--border-color);
-      background: transparent; color: var(--text-secondary);
-      border-radius: 6px; cursor: pointer;
-      font-size: 0.85rem; font-weight: 600;
-      transition: all 0.25s; letter-spacing: 0.5px;
-    }
-    .tab-btn.active {
-      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
-      color: #fff; border-color: transparent;
-    }
-    .tab-btn:hover:not(.active) { background: var(--bg-card); color: var(--text-primary); }
-    main {
-      display: grid; grid-template-columns: 1fr 340px;
-      height: calc(100vh - 112px);
-    }
-    #canvas-section { position: relative; background: var(--bg-dark); overflow: hidden; }
-    #three-canvas { width: 100%; height: 100%; display: block; }
-    .canvas-overlay {
-      position: absolute; top: 14px; left: 14px;
-      display: flex; flex-direction: column; gap: 8px; pointer-events: none;
-    }
-    .canvas-badge {
-      background: rgba(10,14,26,0.8); border: 1px solid var(--border-color);
-      border-radius: 6px; padding: 6px 12px; font-size: 0.75rem; color: var(--accent-blue);
-      backdrop-filter: blur(4px); pointer-events: auto;
-    }
-    .canvas-controls { position: absolute; bottom: 14px; left: 14px; display: flex; gap: 8px; }
-    .ctrl-btn {
-      background: rgba(10,14,26,0.85); border: 1px solid var(--border-color);
-      color: var(--text-primary); border-radius: 6px; padding: 6px 14px;
-      font-size: 0.78rem; cursor: pointer; transition: border-color 0.2s;
-    }
-    .ctrl-btn:hover { border-color: var(--accent-blue); }
-    .tooltip-3d {
-      position: absolute;
-      background: rgba(10,14,26,0.95); border: 1px solid var(--accent-blue);
-      border-radius: 8px; padding: 10px 14px; font-size: 0.8rem;
-      pointer-events: none; display: none; max-width: 220px; z-index: 50;
-    }
-    .tooltip-3d .tt-title { color: var(--accent-blue); font-weight: 700; margin-bottom: 4px; }
-    .tooltip-3d .tt-row {
-      display: flex; justify-content: space-between; gap: 10px;
-      color: var(--text-secondary); font-size: 0.75rem; margin: 2px 0;
-    }
-    .tooltip-3d .tt-row span:last-child { color: var(--text-primary); font-weight: 600; }
-    aside {
-      background: var(--bg-panel); border-left: 1px solid var(--border-color);
-      display: flex; flex-direction: column; overflow: hidden;
-    }
-    .panel-header {
-      padding: 14px 18px 10px; border-bottom: 1px solid var(--border-color);
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .panel-header h2 { font-size: 0.9rem; font-weight: 700; }
-    .badge-count {
-      background: var(--accent-blue); color: #fff;
-      border-radius: 10px; padding: 2px 9px; font-size: 0.72rem; font-weight: 700;
-    }
-    .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; border-bottom: 1px solid var(--border-color); }
-    .kpi-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px; }
-    .kpi-card .kpi-label { font-size: 0.68rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px; }
-    .kpi-card .kpi-value { font-size: 1.4rem; font-weight: 700; }
-    .kpi-card.blue .kpi-value  { color: var(--accent-blue); }
-    .kpi-card.green .kpi-value { color: var(--accent-green); }
-    .kpi-card.orange .kpi-value { color: var(--accent-orange); }
-    .kpi-card.purple .kpi-value { color: var(--accent-purple); }
-    .search-bar { padding: 10px 12px; border-bottom: 1px solid var(--border-color); display: flex; gap: 8px; }
-    .search-bar input {
-      flex: 1; background: var(--bg-card); border: 1px solid var(--border-color);
-      color: var(--text-primary); border-radius: 6px; padding: 6px 10px; font-size: 0.8rem; outline: none;
-    }
-    .search-bar input:focus { border-color: var(--accent-blue); }
-    .filter-select {
-      background: var(--bg-card); border: 1px solid var(--border-color);
-      color: var(--text-primary); border-radius: 6px; padding: 6px 8px; font-size: 0.78rem; outline: none; cursor: pointer;
-    }
-    .table-wrap { flex: 1; overflow-y: auto; padding: 0 12px 12px; }
-    .table-wrap::-webkit-scrollbar { width: 5px; }
-    .table-wrap::-webkit-scrollbar-track { background: var(--bg-dark); }
-    .table-wrap::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
-    .data-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; margin-top: 8px; }
-    .data-table th {
-      position: sticky; top: 0; background: var(--bg-panel);
-      color: var(--text-secondary); text-transform: uppercase; font-size: 0.65rem;
-      letter-spacing: 0.5px; padding: 8px 6px; border-bottom: 1px solid var(--border-color); text-align: left;
-    }
-    .data-table td { padding: 7px 6px; border-bottom: 1px solid rgba(30,48,96,0.4); vertical-align: middle; }
-    .data-table tr:hover td { background: rgba(0,212,255,0.05); cursor: pointer; }
-    .data-table tr.selected td { background: rgba(0,212,255,0.1); }
-    .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.65rem; font-weight: 700; }
-    .pill-blue   { background: rgba(0,212,255,0.15); color: var(--accent-blue); }
-    .pill-green  { background: rgba(0,255,136,0.15); color: var(--accent-green); }
-    .pill-orange { background: rgba(255,107,53,0.15); color: var(--accent-orange); }
-    .pill-red    { background: rgba(255,71,87,0.15);  color: var(--danger); }
-    .pill-purple { background: rgba(155,89,255,0.15); color: var(--accent-purple); }
-    .bar-mini { display: inline-flex; align-items: center; gap: 4px; width: 100%; }
-    .bar-mini .bar-bg { flex: 1; height: 5px; background: var(--border-color); border-radius: 3px; overflow: hidden; }
-    .bar-mini .bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple)); }
-    #loading-overlay {
-      position: fixed; inset: 0; background: rgba(10,14,26,0.95);
-      display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999;
-    }
-    .spinner {
-      width: 48px; height: 48px; border: 3px solid var(--border-color);
-      border-top-color: var(--accent-blue); border-radius: 50%;
-      animation: spin 0.8s linear infinite; margin-bottom: 16px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    #error-banner {
-      display: none; background: rgba(255,71,87,0.15); border: 1px solid var(--danger);
-      color: var(--danger); padding: 10px 18px; border-radius: 8px; font-size: 0.82rem; margin: 12px;
-    }
-    #detail-panel {
-      display: none; position: fixed; right: 0; top: 0; bottom: 0; width: 380px;
-      background: var(--bg-panel); border-left: 1px solid var(--border-color);
-      z-index: 200; overflow-y: auto; padding: 20px; animation: slideIn 0.25s ease;
-    }
-    @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
-    .detail-close {
-      float: right; background: none; border: 1px solid var(--border-color);
-      color: var(--text-secondary); border-radius: 5px; padding: 4px 10px; cursor: pointer; font-size: 0.8rem;
-    }
-    .detail-close:hover { border-color: var(--danger); color: var(--danger); }
-    .detail-title { font-size: 1rem; font-weight: 700; color: var(--accent-blue); margin-bottom: 4px; margin-top: 8px; }
-    .detail-sub { font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 16px; }
-    .detail-section { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 12px; }
-    .detail-section h3 { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-secondary); margin-bottom: 10px; }
-    .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid rgba(30,48,96,0.3); font-size: 0.8rem; }
-    .detail-row:last-child { border-bottom: none; }
-    .detail-row .dr-label { color: var(--text-secondary); }
-    .detail-row .dr-value { font-weight: 600; }
-    .days-chart { display: flex; gap: 4px; align-items: flex-end; height: 60px; margin-top: 8px; }
-    .day-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; height: 100%; justify-content: flex-end; }
-    .day-bar { width: 100%; background: linear-gradient(0deg, var(--accent-blue), var(--accent-purple)); border-radius: 3px 3px 0 0; min-height: 2px; }
-    .day-label { font-size: 0.6rem; color: var(--text-secondary); }
-    .legend {
-      position: absolute; bottom: 14px; right: 14px;
-      background: rgba(10,14,26,0.85); border: 1px solid var(--border-color);
-      border-radius: 8px; padding: 10px 14px; font-size: 0.72rem; backdrop-filter: blur(4px);
-    }
-    .legend h4 { color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; font-size: 0.65rem; }
-    .legend-item { display: flex; align-items: center; gap: 7px; margin: 3px 0; }
-    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Shipment Dashboard & 3D Digital Twin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- THREE.JS POUR LA 3D DYNAMIQUE -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .row-expanded .chevron { transform: rotate(90deg); }
+        .chevron { transition: transform 0.2s ease-in-out; }
+        
+        body { font-family: 'IBM Plex Sans', sans-serif; }
+        .layout-wrapper { font-family: 'IBM Plex Sans', sans-serif; }
+
+        /* HEADER 2D */
+        .hdr {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 10px; padding: 10px 16px; background: white;
+            border-radius: 10px; border: 1px solid #e2e8f0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .hdr-t { font-size: 15px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px; }
+        .kpis { display: flex; gap: 12px; font-size: 11px; font-weight: 700; }
+        .ks { color: #ea580c; } .ka { color: #16a34a; } .kc { color: #0891b2; }
+
+        /* LÉGENDE 2D */
+        .leg {
+            display: flex; flex-wrap: wrap; gap: 5px 12px; align-items: center;
+            margin-bottom: 10px; padding: 8px 14px; background: white;
+            border-radius: 8px; border: 1px solid #e2e8f0; font-size: 10px; font-weight: 600;
+        }
+        .li { display: flex; align-items: center; gap: 4px; color: #334155; }
+        .ld { width: 11px; height: 11px; border-radius: 2px; border: 1px solid rgba(0,0,0,0.12); flex-shrink: 0; }
+        .lsep { width: 1px; height: 16px; background: #e2e8f0; }
+
+        /* MAP CONTAINERS 2D */
+        #map, #map-future {
+            position: relative;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 1.85 / 1;
+            background: #ffffff;
+            border: 1px solid #dde3ec;
+            border-radius: 6px;
+            overflow: visible;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+        }
+
+        /* CONTAINER 3D */
+        #container-3d {
+            position: relative; width: 100%; height: 75vh; min-height: 600px;
+            background: #0f172a; border-radius: 12px; overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2); border: 1px solid #334155;
+        }
+        #map-3d { position: absolute; inset: 0; z-index: 1; }
+        
+        /* 3D UI OVERLAY */
+        #ui-layer-3d { position: absolute; inset: 0; pointer-events: none; z-index: 10; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; box-sizing: border-box; }
+        .glass-panel { background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 16px 24px; color: white; pointer-events: auto; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .controls-hint { font-size: 12px; color: #cbd5e1; display: flex; gap: 16px; font-weight: 500;}
+        .controls-hint kbd { background: rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 4px; font-family: 'IBM Plex Mono', monospace; }
+        .stat-item { display: inline-block; margin-left: 20px; text-align: right; }
+        .stat-val { font-size: 24px; font-weight: 700; color: #fff; line-height: 1; }
+        .stat-lbl { font-size: 10px; text-transform: uppercase; color: #94a3b8; letter-spacing: 1px; }
+        #loader-3d { position: absolute; inset: 0; background: #0f172a; z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center; color: white; transition: opacity 0.5s; }
+
+        /* ZONES STATIQUES 2D */
+        .zs {
+            position: absolute; display: flex; align-items: center; justify-content: center;
+            text-align: center; border-radius: 4px; z-index: 2;
+            font-size: 12px; font-weight: 500; color: white;
+            letter-spacing: 0.02em; line-height: 1.2;
+        }
+        
+        .z-camion       { background: #8a8585; font-size: 16px; }
+        .z-camion-empty { background: #f8fafc; border: 2px dashed #94a3b8; color: #94a3b8; font-size: 14px; }
+        .z-forklift     { background: #5dc349; color: #111; font-size: 11px; font-weight: 600; }
+        .z-agv          { background: #111111; font-size: 10px; }
+        .z-bureau       { background: #8a8585; font-size: 14px; }
+        .z-debort       { background: #111111; font-size: 11px; }
+        .z-quai         { background: #111111; font-size: 10px; border-radius: 6px; }
+        .z-couloir      { background: #f1f5f9; border: 1px solid #e2e8f0; color: transparent; z-index: 1;}
+        .z-stockage     { background: #f3e8ff; border: 1.5px solid #d8b4fe; color: #6b21a8; font-size: 12px; }
+        .z-kardex       { background: #ffffff; border: 1px solid #ccc; font-size: 11px; color: #111; }
+
+        /* ZONES STORAGE */
+        .zr {
+            position: absolute; z-index: 3; display: grid; gap: 1.5px; padding: 2px;
+            border-radius: 2px; transform-origin: center center;
+            transition: transform 0.26s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.18s, border-color 0.18s;
+            cursor: zoom-in;
+            background: white;
+            overflow: visible; 
+        }
+        .zr:hover {
+            transform: scale(2.8);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.28);
+            z-index: 500 !important; background: white !important;
+        }
+        
+        .zt-prep    { border: 1.5px solid #3b82f6; }
+        .zt-serie   { border: 1.5px solid #f59e0b; }
+        .zt-mixte   { border: 1.5px solid #eab308; background: #fef9c3 !important; }
+        .zt-serie-a { border: 1.5px solid #000; background: #111 !important;}
+        .zt-afm     { border: 1.5px solid #f472b6; }
+        .zt-cjt     { border: 1.5px solid #f472b6; }
+        .zt-cerclage{ border: 1.5px solid #800e26; } 
+        
+        .zt-bleu26  { border: 1.5px solid #0284c7; background: #0ea5e9 !important; color: white; }
+        .zt-jaune72 { border: 1.5px solid #eab308; background: #fef08a !important; color: #854d0e; }
+        .zt-blanc   { border: 1.5px solid #64748b; background: #ffffff !important; color: #0f172a; }
+        .zt-rouge   { border: 1.5px solid #4a044e; background: #9f1239 !important; color: white; }
+        .zt-rose    { border: 1.5px solid #be185d; background: #db2777 !important; color: white; }
+
+        .zt-prep:hover    { border-color: #2563eb; }
+        .zt-serie:hover   { border-color: #ea580c; }
+        .zt-mixte:hover   { border-color: #ca8a04; }
+        .zt-serie-a:hover { border-color: #475569; }
+        .zt-afm:hover     { border-color: #16a34a; }
+        .zt-cjt:hover     { border-color: #0891b2; }
+        .zt-cerclage:hover{ border-color: #4a0412; }
+
+        /* Watermarks */
+        .wcap {
+            position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            font-size: 14px; font-weight: 800; color: rgba(0,0,0,0.15);
+            pointer-events: none; font-family: 'IBM Plex Sans', sans-serif; z-index: 0;
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .zt-serie-a .wcap { color: rgba(255,255,255,0.3); font-size: 16px;}
+        .zt-cerclage .wcap { color: rgba(255,255,255,0.3); }
+
+        /* SLOTS */
+        .sl {
+            width: 100%; height: 100%; border-radius: 1px; border: 1px dashed #cbd5e1;
+            user-select: none; transition: opacity 0.1s;
+        }
+        
+        .zt-prep    .sl { background: #eff6ff; border-color: #bfdbfe; }
+        .zt-serie   .sl { background: #fffbeb; border-color: #fde68a; }
+        .zt-mixte   .sl { background: #fef08a; border-color: #fde047; }
+        .zt-serie-a .sl { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.15); }
+        .zt-afm     .sl { background: #fdf2f8; border-color: #fbcfe8; }
+        .zt-cjt     .sl { background: #fdf2f8; border-color: #fbcfe8; }
+        .zt-cerclage .sl { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+        
+        .sl.filled  { border: 1px solid rgba(0,0,0,0.08); background: rgba(255,255,255,0.2); }
+
+        .sl.ov {
+            background: #ef4444 !important; border: 1px solid rgba(0,0,0,0.2);
+            animation: blink 1s ease-in-out infinite;
+            position: relative;
+            z-index: 50;
+            min-height: 4px; 
+            box-shadow: 0 0 4px rgba(239,68,68,0.5);
+        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        /* TOOLTIP 2D */
+        #tt {
+            position: fixed; background: rgba(15,23,42,0.97); backdrop-filter: blur(10px); color: white;
+            padding: 11px 13px; border-radius: 10px; font-size: 11px; pointer-events: none; opacity: 0;
+            transition: opacity 0.12s; z-index: 9999; width: 250px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.45); border: 1px solid rgba(255,255,255,0.07);
+        }
+        #tt.show { opacity: 1; }
+        .ttb {
+            display: inline-block; padding: 3px 9px; border-radius: 4px; font-size: 11px; font-weight: 700;
+            margin-bottom: 8px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .ttr {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 3px 0; border-bottom: 1px solid rgba(255,255,255,0.06); gap: 8px;
+        }
+        .ttr:last-child { border-bottom: none; }
+        .ttl { color: #94a3b8; font-size: 9.5px; white-space: nowrap; }
+        .ttv { font-weight: 700; font-size: 11px; font-family: 'IBM Plex Mono', monospace; text-align: right; }
+        .bar-bg { width: 100%; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; margin-top: 7px; }
+        .bar-fg { height: 100%; border-radius: 2px; transition: width 0.3s; }
+    </style>
 </head>
-<body>
+<body class="bg-slate-50 text-slate-800 font-sans min-h-screen p-4 md:p-8">
 
-<div id="loading-overlay">
-  <div class="spinner"></div>
-  <p style="color:var(--text-secondary);font-size:0.9rem;">Loading shipment data&hellip;</p>
-</div>
-
-<header>
-  <div class="header-title">
-    <div class="logo">&#x1F310;</div>
-    <div>
-      <h1>Global Shipment Dashboard</h1>
-      <p>Digital Twin &middot; Real-Time Logistics Intelligence</p>
+    <div id="loading-screen" class="fixed inset-0 bg-slate-50/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center transition-opacity">
+        <i data-lucide="loader-2" class="w-10 h-10 text-blue-600 animate-spin mb-4"></i>
+        <p class="text-slate-600 font-medium animate-pulse" id="loading-text">Synchronisation des données...</p>
     </div>
-  </div>
-  <div class="header-right">
-    <span id="live-time"></span>
-    <button class="ctrl-btn" onclick="refreshData()">&#x21BB; Refresh</button>
-  </div>
-</header>
 
-<div class="view-tabs">
-  <button class="tab-btn active" onclick="switchView('SERIE', this)">&#x1F4E6; SERIE View</button>
-  <button class="tab-btn" onclick="switchView('AFM', this)">&#x1F69B; AFM View</button>
-  <button class="tab-btn" id="btn-3d" onclick="toggle3D(this)">&#x1F52E; 3D Digital Twin</button>
-</div>
+    <div id="main-content" class="w-full space-y-6 hidden transition-opacity duration-300">
+        <header class="flex flex-col xl:flex-row xl:items-center justify-between gap-6 bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900 flex items-center gap-2">
+                    <i data-lucide="truck" class="text-blue-600"></i>
+                    Global Shipment Window
+                </h1>
+                <div class="mt-4 flex flex-wrap bg-slate-100 p-1 rounded-lg w-fit gap-1">
+                    <button id="tab-serie" onclick="switchView('SERIE')" class="px-6 py-2 rounded-md bg-white shadow-sm text-blue-600 font-bold text-sm transition-all focus:outline-none">
+                        SERIE (Couverture)
+                    </button>
+                    <button id="tab-afm" onclick="switchView('AFM')" class="px-6 py-2 rounded-md text-slate-500 hover:text-slate-700 font-bold text-sm transition-all focus:outline-none">
+                        AFM (After Market)
+                    </button>
+                    <button id="tab-standard" onclick="switchView('STANDARD')" class="px-6 py-2 rounded-md text-slate-500 hover:text-slate-700 font-bold text-sm transition-all focus:outline-none">
+                        STANDARD
+                    </button>
+                    <button id="tab-layout" onclick="switchView('LAYOUT')" class="px-6 py-2 rounded-md text-slate-500 hover:text-slate-700 font-bold text-sm transition-all focus:outline-none">
+                        Shipment Layout (2D)
+                    </button>
+                    <button id="tab-future" onclick="switchView('FUTURE')" class="px-6 py-2 rounded-md text-slate-500 hover:text-slate-700 font-bold text-sm transition-all focus:outline-none bg-blue-50/50">
+                        Shipment Layout Future state
+                    </button>
+                    <button id="tab-3d" onclick="switchView('FUTURE_3D')" class="px-6 py-2 rounded-md text-indigo-600 hover:bg-indigo-100 font-bold text-sm transition-all focus:outline-none flex items-center gap-2 border border-indigo-100">
+                        <i data-lucide="box" class="w-4 h-4"></i> 3D Digital Twin
+                    </button>
+                    <button id="tab-references" onclick="switchView('REFERENCES')" class="px-6 py-2 rounded-md text-slate-500 hover:text-slate-700 font-bold text-sm transition-all focus:outline-none">
+                        References & Guidelines
+                    </button>
+                </div>
+            </div>
+            
+            <div class="flex flex-wrap items-center gap-3 xl:gap-4 justify-end">
+                <div class="text-right hidden sm:block mr-2" id="live-status-container">
+                    <p class="text-[10px] text-slate-400 uppercase font-semibold tracking-wider">Statut Live</p>
+                    <p class="text-xs text-emerald-600 font-medium flex items-center gap-1.5 justify-end">
+                        <span class="relative flex h-2 w-2">
+                          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                        </span>
+                        Sync: <span id="last-updated-time">--:--</span>
+                    </p>
+                </div>
 
-<main>
-  <section id="canvas-section">
-    <canvas id="three-canvas"></canvas>
-    <div class="canvas-overlay">
-      <div class="canvas-badge" id="view-badge">&#x1F4E6; SERIE &mdash; Supply Chain View</div>
-      <div class="canvas-badge" id="node-count-badge">Nodes: 0</div>
+                <div id="kpi-container" class="flex flex-wrap items-center gap-3 xl:gap-4 justify-end">
+                    <div class="bg-indigo-50 border border-indigo-100 px-4 py-2 rounded-lg text-right w-36">
+                        <p class="text-[9px] font-bold text-indigo-700 uppercase tracking-wider truncate" id="kpi-1-label">Cmd Palettes</p>
+                        <p class="text-lg font-bold text-indigo-900" id="kpi-1-value">0</p>
+                    </div>
+                    <div class="bg-teal-50 border border-teal-100 px-4 py-2 rounded-lg text-right w-36">
+                        <p class="text-[9px] font-bold text-teal-700 uppercase tracking-wider truncate" id="kpi-2-label">Stock (Palettes)</p>
+                        <p class="text-lg font-bold text-teal-900" id="kpi-2-value">0</p>
+                    </div>
+                    <div class="bg-emerald-50 border border-emerald-100 px-4 py-2 rounded-lg text-right w-36">
+                        <p class="text-[9px] font-bold text-emerald-700 uppercase tracking-wider truncate" id="kpi-3-label">Stock (Remorques)</p>
+                        <p class="text-lg font-bold text-emerald-900" id="kpi-3-value">0.00</p>
+                    </div>
+                    <div class="bg-blue-50 border border-blue-100 px-4 py-2 rounded-lg text-right w-36">
+                        <p class="text-[9px] font-bold text-blue-600 uppercase tracking-wider truncate" id="kpi-4-label">Total Planning</p>
+                        <p class="text-lg font-bold text-blue-900" id="kpi-4-value">0.00</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div id="sub-kpi-container" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4">
+                <div class="p-3 bg-emerald-50 rounded-xl text-emerald-600"><i data-lucide="map-pin"></i></div>
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase" id="sub-kpi-1-label">Destinations Actives</p>
+                    <p class="text-xl font-bold text-slate-900" id="active-destinations">0</p>
+                </div>
+            </div>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4">
+                <div class="p-3 bg-amber-50 rounded-xl text-amber-600"><i data-lucide="package-search"></i></div>
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase">Projets Actifs</p>
+                    <p class="text-xl font-bold text-slate-900" id="active-projects">0</p>
+                </div>
+            </div>
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex items-center gap-4">
+                <div class="p-3 bg-purple-50 rounded-xl text-purple-600"><i data-lucide="trending-up"></i></div>
+                <div>
+                    <p class="text-xs font-medium text-slate-500 uppercase" id="sub-kpi-3-label">Top Destination</p>
+                    <p class="text-xl font-bold text-slate-900 truncate w-40" id="top-destination">-</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="data-container" class="grid grid-cols-1 gap-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[600px]">
+                <div class="p-5 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
+                    <h2 class="text-lg font-semibold text-slate-800" id="table-title">Planning Détaillé 6 Jours</h2>
+                    <button id="expand-all-btn" class="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors">Tout Développer</button>
+                </div>
+                <div class="overflow-auto flex-1 p-0">
+                    <table class="w-full text-left border-collapse" id="main-table">
+                        <thead class="bg-slate-50 sticky top-0 z-20 shadow-sm" id="table-head"></thead>
+                        <tbody id="table-body" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-col h-[400px]">
+                <h2 class="text-lg font-semibold text-slate-800 mb-4" id="chart-title">Volume par Destination</h2>
+                <div class="flex-1 relative w-full flex items-center justify-center">
+                    <canvas id="destinationChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div id="standard-container" class="hidden grid grid-cols-1 gap-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+                <div class="p-5 border-b border-slate-200 bg-slate-50/50 flex justify-between items-center">
+                    <h2 class="text-lg font-semibold text-slate-800">Programme Standard - LES ENVOIS</h2>
+                </div>
+                <div class="overflow-auto p-0">
+                    <table class="w-full text-left border-collapse min-w-[1200px] border border-slate-300">
+                        <thead class="bg-slate-50 border-b border-slate-300 sticky top-0 z-20">
+                            <tr>
+                                <th class="px-2 py-3 text-xs font-bold text-slate-700 uppercase border border-slate-300 text-center w-12"></th>
+                                <th class="px-2 py-3 text-xs font-bold text-slate-700 uppercase border border-slate-300 text-center whitespace-nowrap w-32">Heure</th>
+                                <th class="px-2 py-3 text-xs font-bold text-slate-700 uppercase border border-slate-300 text-center w-[13%]">Lundi</th>
+                                <th class="px-2 py-3 text-xs font-bold text-slate-700 uppercase border border-slate-300 text-center w-[13%]">Mardi</th>
+                                <th class="px-2 py-3 text-xs font-bold text-slate-700 uppercase border border-slate-300 text-center w-[13%]">Mercredi</th>
+                                <th class="px-2 py-3 text-xs font-bold text-slate-700 uppercase border border-slate-300 text-center w-[13%]">Jeudi</th>
+                                <th class="px-2 py-3 text-xs font-bold text-slate-700 uppercase border border-slate-300 text-center w-[13%]">Vendredi</th>
+                                <th class="px-2 py-3 text-xs font-bold text-slate-700 uppercase border border-slate-300 text-center w-[10%]">Samedi</th>
+                                <th class="px-2 py-3 text-xs font-bold text-slate-700 uppercase border border-slate-300 text-center w-[10%]">Dimanche</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-300 text-xs">
+                            <!-- MATIN -->
+                            <tr class="bg-white hover:bg-slate-50">
+                                <td rowspan="8" class="px-2 py-4 font-black text-slate-800 uppercase tracking-widest text-center border border-slate-300 align-middle"><div style="writing-mode: vertical-rl; transform: rotate(180deg);" class="mx-auto text-lg">MATIN</div></td>
+                                <td class="px-2 py-2 border border-slate-300 text-center whitespace-nowrap">06h00 – 07h00</td>
+                                <td class="px-2 py-2 border border-slate-300">RTE // OPEL ZARAGOZA</td>
+                                <td class="px-2 py-2 border border-slate-300">RTE // OPEL ZARAGOZA</td>
+                                <td class="px-2 py-2 border border-slate-300">RTE // OPEL ZARAGOZA</td>
+                                <td class="px-2 py-2 border border-slate-300">RTE // OPEL ZARAGOZA</td>
+                                <td class="px-2 py-2 border border-slate-300">RTE // OPEL ZARAGOZA</td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                            </tr>
+                            <tr class="bg-white hover:bg-slate-50">
+                                <td class="px-2 py-2 border border-slate-300 text-center whitespace-nowrap">07h00 – 08h00</td>
+                                <td class="px-2 py-2 border border-slate-300 bg-orange-500 font-semibold">OPEL ZARAGOZA</td>
+                                <td class="px-2 py-2 border border-slate-300">OPEL ZARAGOZA</td>
+                                <td class="px-2 py-2 border border-slate-300">OPEL ZARAGOZA</td>
+                                <td class="px-2 py-2 border border-slate-300">OPEL ZARAGOZA</td>
+                                <td class="px-2 py-2 border border-slate-300">OPEL ZARAGOZA</td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                            </tr>
+                            <tr class="bg-white hover:bg-slate-50">
+                                <td class="px-2 py-2 border border-slate-300 text-center whitespace-nowrap">08h00 – 09h00</td>
+                                <td class="px-2 py-2 border border-slate-300">SOMACA (proposition au client 09h-10)</td>
+                                <td class="px-2 py-2 border border-slate-300">SOMACA</td>
+                                <td class="px-2 py-2 border border-slate-300">SOMACA</td>
+                                <td class="px-2 py-2 border border-slate-300">SOMACA</td>
+                                <td class="px-2 py-2 border border-slate-300">SOMACA</td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                            </tr>
+                            <tr class="bg-white hover:bg-slate-50">
+                                <td class="px-2 py-2 border border-slate-300 text-center whitespace-nowrap">09h00 – 10h00</td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                            </tr>
+                            <tr class="bg-white hover:bg-slate-50">
+                                <td class="px-2 py-2 border border-slate-300 text-center whitespace-nowrap">10h00 – 11h00</td>
+                                <td colspan="7" class="bg-red-600 border border-slate-300"></td>
+                            </tr>
+                            <tr class="bg-white hover:bg-slate-50">
+                                <td class="px-2 py-2 border border-slate-300 text-center whitespace-nowrap">11h00 – 12h00</td>
+                                <td class="px-2 py-2 border border-slate-300">PSA KENITRA</td>
+                                <td class="px-2 py-2 border border-slate-300">PSA KENITRA</td>
+                                <td class="px-2 py-2 border border-slate-300">PSA KENITRA</td>
+                                <td class="px-2 py-2 border border-slate-300">PSA KENITRA</td>
+                                <td class="px-2 py-2 border border-slate-300">PSA KENITRA</td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                            </tr>
+                            <tr class="bg-white hover:bg-slate-50">
+                                <td class="px-2 py-2 border border-slate-300 text-center whitespace-nowrap">12h00 – 13h00</td>
+                                <td class="px-2 py-2 border border-slate-300">PSA VIGO // K9 VIGO</td>
+                                <td class="px-2 py-2 border border-slate-300">PSA VIGO // K9 VIGO</td>
+                                <td class="px-2 py-2 border border-slate-300">PSA VIGO // K9 VIGO</td>
+                                <td class="px-2 py-2 border border-slate-300">PSA VIGO // K9 VIGO</td>
+                                <td class="px-2 py-2 border border-slate-300">PSA VIGO // K9 VIGO</td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                            </tr>
+                            <tr class="bg-white hover:bg-slate-50">
+                                <td class="px-2 py-2 border border-slate-300 text-center whitespace-nowrap">13h00 – 14h00</td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                            </tr>
+
+                            <!-- APRÈS-MIDI -->
+                            <tr class="bg-white hover:bg-slate-50">
+                                <td rowspan="8" class="px-2 py-4 font-black text-slate-800 uppercase tracking-widest text-center border border-slate-300 align-middle"><div style="writing-mode: vertical-rl; transform: rotate(180deg);" class="mx-auto text-lg">APRÈS-MIDI</div></td>
+                                <td class="px-2 py-2 border border-slate-300 text-center whitespace-nowrap">14h00 – 15h00</td>
+                                <td class="px-2 py-2 border border-slate-300">PSA VIGO</td>
+                                <td class="px-2 py-2 border border-slate-300">PSA VIGO</td>
+                                <td class="px-2 py-2 border border-slate-300">PSA VIGO</td>
+                                <td class="px-2 py-2 border border-slate-300">PSA VIGO</td>
+                                <td class="px-2 py-2 border border-slate-300">PSA VIGO</td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                            </tr>
+                            <tr class="bg-white hover:bg-slate-50">
+                                <td class="px-2 py-2 border border-slate-300 text-center whitespace-nowrap">15h00 – 16h00</td>
+                                <td class="px-2 py-2 border border-slate-300">RTE // AILN</td>
+                                <td class="px-2 py-2 border border-slate-300">RTE</td>
+                                <td class="px-2 py-2 border border-slate-300">RTE</td>
+                                <td class="px-2 py-2 border border-slate-300">RTE //ELESMER PORT</td>
+                                <td class="px-2 py-2 border border-slate-300">AILN</td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                            </tr>
+                            <tr class="bg-white hover:bg-slate-50">
+                                <td class="px-2 py-2 border border-slate-300 text-center whitespace-nowrap">16h00 – 17h00</td>
+                                <td class="px-2 py-2 border border-slate-300">K9 VIGO</td>
+                                <td class="px-2 py-2 border border-slate-300">K9 VIGO</td>
+                                <td class="px-2 py-2 border border-slate-300">K9 VIGO</td>
+                                <td class="px-2 py-2 border border-slate-300">K9 VIGO</td>
+                                <td class="px-2 py-2 border border-slate-300">K9 VIGO</td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                            </tr>
+                            <tr class="bg-white hover:bg-slate-50">
+                                <td class="px-2 py-2 border border-slate-300 text-center whitespace-nowrap">17h00 – 18h00</td>
+                                <td class="px-2 py-2 border border-slate-300">OPEL ZARAGOZA</td>
+                                <td class="px-2 py-2 border border-slate-300">OPEL ZARAGOZA</td>
+                                <td class="px-2 py-2 border border-slate-300">OPEL ZARAGOZA</td>
+                                <td class="px-2 py-2 border border-slate-300">OPEL ZARAGOZA</td>
+                                <td class="px-2 py-2 border border-slate-300">OPEL ZARAGOZA</td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                            </tr>
+                            <tr class="bg-white hover:bg-slate-50">
+                                <td class="px-2 py-2 border border-slate-300 text-center whitespace-nowrap">18h00 – 19h00</td>
+                                <td colspan="7" class="bg-red-600 border border-slate-300"></td>
+                            </tr>
+                            <tr class="bg-white hover:bg-slate-50">
+                                <td class="px-2 py-2 border border-slate-300 text-center whitespace-nowrap">19h00 – 20h00</td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                            </tr>
+                            <tr class="bg-white hover:bg-slate-50">
+                                <td class="px-2 py-2 border border-slate-300 text-center whitespace-nowrap">20h00 – 21h00</td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                            </tr>
+                            <tr class="bg-white hover:bg-slate-50">
+                                <td class="px-2 py-2 border border-slate-300 text-center whitespace-nowrap">21h00 – 22h00</td>
+                                <td class="px-2 py-2 border border-slate-300">// K9 MANGUALDE</td>
+                                <td class="px-2 py-2 border border-slate-300">// K9 MANGUALDE</td>
+                                <td class="px-2 py-2 border border-slate-300">// K9 MANGUALDE</td>
+                                <td class="px-2 py-2 border border-slate-300">// K9 MANGUALDE</td>
+                                <td class="px-2 py-2 border border-slate-300">// K9 MANGUALDE</td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                            </tr>
+
+                            <!-- NUIT -->
+                            <tr class="bg-white hover:bg-slate-50">
+                                <td rowspan="8" class="px-2 py-4 font-black text-slate-800 uppercase tracking-widest text-center border border-slate-300 align-middle"><div style="writing-mode: vertical-rl; transform: rotate(180deg);" class="mx-auto text-lg">NUIT</div></td>
+                                <td class="px-2 py-2 border border-slate-300 text-center whitespace-nowrap">22h00 – 23h00</td>
+                                <td class="px-2 py-2 border border-slate-300">PSA KENITRA</td>
+                                <td class="px-2 py-2 border border-slate-300">PSA KENITRA</td>
+                                <td class="px-2 py-2 border border-slate-300">PSA KENITRA</td>
+                                <td class="px-2 py-2 border border-slate-300">PSA KENITRA</td>
+                                <td class="px-2 py-2 border border-slate-300">PSA KENITRA</td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                            </tr>
+                            <tr class="bg-white hover:bg-slate-50">
+                                <td class="px-2 py-2 border border-slate-300 text-center whitespace-nowrap">23h00 – 00h00</td>
+                                <td class="px-2 py-2 border border-slate-300 bg-orange-500 font-semibold">OPEL ZARGOZA</td>
+                                <td class="px-2 py-2 border border-slate-300">OPEL ZARGOZA</td>
+                                <td class="px-2 py-2 border border-slate-300">OPEL ZARGOZA</td>
+                                <td class="px-2 py-2 border border-slate-300">OPEL ZARGOZA</td>
+                                <td class="px-2 py-2 border border-slate-300">OPEL ZARGOZA</td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                            </tr>
+                            <tr class="bg-white hover:bg-slate-50">
+                                <td class="px-2 py-2 border border-slate-300 text-center whitespace-nowrap">00h00 – 01h00</td>
+                                <td class="px-2 py-2 border border-slate-300">K9 VIGO</td>
+                                <td class="px-2 py-2 border border-slate-300">K9 VIGO</td>
+                                <td class="px-2 py-2 border border-slate-300">K9 VIGO</td>
+                                <td class="px-2 py-2 border border-slate-300">K9 VIGO</td>
+                                <td class="px-2 py-2 border border-slate-300">K9 VIGO</td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                            </tr>
+                            <tr class="bg-white hover:bg-slate-50">
+                                <td class="px-2 py-2 border border-slate-300 text-center whitespace-nowrap">01h00 – 02h00</td>
+                                <td colspan="7" class="bg-red-600 border border-slate-300"></td>
+                            </tr>
+                            <tr class="bg-white hover:bg-slate-50">
+                                <td class="px-2 py-2 border border-slate-300 text-center whitespace-nowrap">02h00 – 03h00</td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                            </tr>
+                            <tr class="bg-white hover:bg-slate-50">
+                                <td class="px-2 py-2 border border-slate-300 text-center whitespace-nowrap">03h00 – 04h00</td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                            </tr>
+                            <tr class="bg-white hover:bg-slate-50">
+                                <td class="px-2 py-2 border border-slate-300 text-center whitespace-nowrap">04h00 – 05h00</td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                            </tr>
+                            <tr class="bg-white hover:bg-slate-50">
+                                <td class="px-2 py-2 border border-slate-300 text-center whitespace-nowrap">05h00 – 06h00</td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                                <td class="px-2 py-2 border border-slate-300"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- CURRENT SHIPMENT LAYOUT (2D TWIN) -->
+        <div id="layout-container" class="hidden grid grid-cols-1 gap-6 layout-wrapper">
+            <div class="hdr">
+              <div class="hdr-t">
+                <svg width="18" height="18" fill="none" stroke="#3b82f6" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 16l4.553 2.276A1 1 0 0021 24.382V8.618a1 1 0 00-.553-.894L15 5m0 18V5m0 0L9 7"/>
+                </svg>
+                Layout Dispatch — 2D Twin
+                <span style="font-size:9.5px;color:#94a3b8;font-weight:400;">· Algo Super-Fluide & Débordement Libre (Zéro Limite)</span>
+              </div>
+              <div class="kpis">
+                <span class="ks" id="k-s">SÉRIE: 0 pal.</span><span style="color:#e2e8f0">|</span>
+                <span class="ka" id="k-a">AFM: 0 pal.</span><span style="color:#e2e8f0">|</span>
+                <span class="kc" id="k-c">CJT AFM: 0 pal.</span>
+              </div>
+            </div>
+
+            <div class="leg">
+              <span style="color:#94a3b8;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;">Zones :</span>
+              <div class="li"><div class="ld" style="background:#bfdbfe;border-color:#60a5fa;"></div>PREP (Série)</div>
+              <div class="li"><div class="ld" style="background:#fef3c7;border-color:#f59e0b;"></div>SÉRIE Exclusive</div>
+              <div class="li"><div class="ld" style="background:#fef9c3;border-color:#eab308;"></div>Zone MIXTE (Secours)</div>
+              <div class="li"><div class="ld" style="background:#111;border-color:#000;"></div>Zone CJT</div>
+              <div class="li"><div class="ld" style="background:#fce7f3;border-color:#fbcfe8;"></div>AFM / CJT</div>
+              <div class="li"><div class="ld" style="background:#ef4444;border-color:#dc2626;"></div>Débordement d'Urgence</div>
+              <div class="lsep"></div>
+              <span style="color:#94a3b8;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;">Destinations :</span>
+              <div id="dest-leg" style="display:flex;flex-wrap:wrap;gap:4px 10px;"></div>
+            </div>
+
+            <!-- MAP 2D -->
+            <div id="map"></div>
+        </div>
+
+        <!-- NEW FUTURE SHIPMENT LAYOUT (2D TWIN) -->
+        <div id="future-container" class="hidden grid grid-cols-1 gap-6 layout-wrapper">
+            <div class="hdr">
+              <div class="hdr-t">
+                <svg width="18" height="18" fill="none" stroke="#6366f1" stroke-width="2" viewBox="0 0 24 24">
+                  <path d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+                </svg>
+                Shipment Layout — FUTURE STATE
+                <span style="font-size:9.5px;color:#94a3b8;font-weight:400;">· Nouvelle infrastructure optimisée & Zéro chevauchement</span>
+              </div>
+              <div class="kpis">
+                <span class="ks" id="kf-s">SÉRIE: 0 pal.</span><span style="color:#e2e8f0">|</span>
+                <span class="ka" id="kf-a">AFM: 0 pal.</span><span style="color:#e2e8f0">|</span>
+                <span class="kc" id="kf-c">CJT AFM: 0 pal.</span>
+              </div>
+            </div>
+
+            <div class="leg">
+              <span style="color:#94a3b8;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;">Zones :</span>
+              <div class="li"><div class="ld" style="background:#bfdbfe;border-color:#60a5fa;"></div>CAMION (Bleu)</div>
+              <div class="li"><div class="ld" style="background:#fffbeb;border-color:#fde68a;"></div>SÉRIE</div>
+              <div class="li"><div class="ld" style="background:#fef08a;border-color:#fde047;"></div>MIXTE</div>
+              <div class="li"><div class="ld" style="background:#fdf2f8;border-color:#fbcfe8;"></div>AFM / CJT</div>
+              <div class="li"><div class="ld" style="background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2);"></div>CERCLAGE</div>
+              <div class="li"><div class="ld" style="background:#ef4444;border-color:#dc2626;"></div>Débordement</div>
+              <div class="lsep"></div>
+              <span style="color:#94a3b8;font-size:9px;text-transform:uppercase;letter-spacing:0.05em;">Destinations :</span>
+              <div id="dest-leg-future" style="display:flex;flex-wrap:wrap;gap:4px 10px;"></div>
+            </div>
+
+            <div id="map-future">
+                <!-- SVG path for AGV Route (Future) -->
+                <svg id="agv-svg-future" viewBox="0 0 1000 1000" preserveAspectRatio="none" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1;">
+                    <path d="M 260 440 L 720 440 L 750 200" fill="none" stroke="#cbd5e1" stroke-width="4" stroke-dasharray="10 10"/>
+                </svg>
+            </div>
+        </div>
+
+        <!-- NEW REFERENCES CONTAINER -->
+        <div id="references-container" class="hidden space-y-6">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 md:p-8">
+                <div class="flex items-center justify-between mb-8">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-900 flex items-center gap-3">
+                            <i data-lucide="library" class="text-blue-600 w-7 h-7"></i>
+                            Library & Official Guidelines
+                        </h2>
+                        <p class="text-slate-500 mt-1 text-sm">Accédez aux manuels et protocoles logistiques de référence (Résumés et Liens).</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    
+                    <!-- Doc 1 : Renault MLF -->
+                    <div class="group relative bg-white rounded-2xl p-8 border border-slate-200 shadow-sm hover:shadow-xl hover:border-blue-300 transition-all duration-300 flex flex-col h-full overflow-hidden">
+                        <div class="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
+                        <div class="absolute top-6 right-6 p-2.5 bg-slate-100 text-slate-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors cursor-pointer shadow-sm" onclick="alert('Simulation: Ouverture du document MLF V14 2020 FR.pdf')">
+                            <i data-lucide="download" class="w-5 h-5"></i>
+                        </div>
+                        <div class="flex items-start gap-4 mb-6">
+                            <div class="p-4 bg-amber-50 rounded-xl shadow-sm border border-amber-100 text-amber-500 flex-shrink-0">
+                                <i data-lucide="book-open" class="w-7 h-7"></i>
+                            </div>
+                            <div class="pr-12">
+                                <h3 class="font-bold text-slate-900 text-xl leading-tight mb-2">Manuel Logistique Fournisseurs</h3>
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-amber-100 text-amber-800 text-xs font-bold uppercase tracking-wider">
+                                    Groupe Renault • V14 2020
+                                </span>
+                            </div>
+                        </div>
+                        <div class="text-sm text-slate-600 leading-relaxed flex-grow space-y-4">
+                            <p class="font-medium text-slate-800">Le document de référence officiel pour les fournisseurs du Groupe Renault (version 14.0). Il formalise les processus de la chaîne d'approvisionnement, de la phase projet (V3P) à la vie série.</p>
+                            <ul class="list-disc pl-5 space-y-2 text-slate-600">
+                                <li><strong>EDI & WebEDI:</strong> Homologation, formats DELFOR/DELJIT/DESADV, qualité AVIEXP.</li>
+                                <li><strong>Emballages:</strong> Gestion PVS/MyPack, palettes, étiquetage (GALIA/ODETTE ETI9), substitution et dotations (UC/UM/UMS).</li>
+                                <li><strong>Transport & Capacité:</strong> Flux synchrones (L3PS), gestion capacitaire via A-DCP, traitement des aléas, gestion des incidents et fins de série.</li>
+                                <li><strong>Performance:</strong> SLA, STAR (Scheduled Time Achievement Ratio), SLHC (Suppliers Logistics Health Check).</li>
+                            </ul>
+                        </div>
+                        <div class="mt-8 pt-5 border-t border-slate-100">
+                            <a href="#" onclick="alert('Simulation: Ouverture du document MLF V14 2020 FR.pdf')" class="inline-flex items-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors">
+                                Télécharger le PDF complet <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Doc 2 : Stellantis -->
+                    <div class="group relative bg-white rounded-2xl p-8 border border-slate-200 shadow-sm hover:shadow-xl hover:border-blue-300 transition-all duration-300 flex flex-col h-full overflow-hidden">
+                        <div class="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
+                        <div class="absolute top-6 right-6 p-2.5 bg-slate-100 text-slate-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors cursor-pointer shadow-sm" onclick="alert('Simulation: Ouverture du document STELLANTIS_Logistics_Book_EE_MEA_2023_v2.pdf')">
+                            <i data-lucide="download" class="w-5 h-5"></i>
+                        </div>
+                        <div class="flex items-start gap-4 mb-6">
+                            <div class="p-4 bg-indigo-50 rounded-xl shadow-sm border border-indigo-100 text-indigo-500 flex-shrink-0">
+                                <i data-lucide="globe" class="w-7 h-7"></i>
+                            </div>
+                            <div class="pr-12">
+                                <h3 class="font-bold text-slate-900 text-xl leading-tight mb-2">Stellantis Logistics Book</h3>
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-indigo-100 text-indigo-800 text-xs font-bold uppercase tracking-wider">
+                                    EE & MEA • 2023.1
+                                </span>
+                            </div>
+                        </div>
+                        <div class="text-sm text-slate-600 leading-relaxed flex-grow space-y-4">
+                            <p class="font-medium text-slate-800">Règles et exigences de la Supply Chain applicables aux divisions Stellantis pour l'Europe Elargie (EE) et le Moyen-Orient & Afrique (MEA), intégrant la convergence des processus ex-FCA et ex-PSA.</p>
+                            <ul class="list-disc pl-5 space-y-2 text-slate-600">
+                                <li><strong>Transport & Logistique:</strong> Convergence vers le TMS unique (iTMS), gestion des Incoterms (DAP/FCA), Milk Run et Hubs.</li>
+                                <li><strong>Procurement:</strong> Processus MRP, prévisions, commandes JIT/JIS et règles de flexibilité (K factor).</li>
+                                <li><strong>Emballages (i-FAST CL):</strong> Packaging Management, Palletizing rules.</li>
+                                <li><strong>Performance & Alertes:</strong> Évaluation Global MMOG/LE™, Supplier Safety Stock (SSS), Supplier Site Transfer et Run-Out Management.</li>
+                            </ul>
+                        </div>
+                        <div class="mt-8 pt-5 border-t border-slate-100">
+                            <a href="#" onclick="alert('Simulation: Ouverture du document STELLANTIS_Logistics_Book_EE_MEA_2023_v2.pdf')" class="inline-flex items-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors">
+                                Télécharger le PDF complet <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Doc 3 : PSA Aftermarket -->
+                    <div class="group relative bg-white rounded-2xl p-8 border border-slate-200 shadow-sm hover:shadow-xl hover:border-blue-300 transition-all duration-300 flex flex-col h-full overflow-hidden">
+                        <div class="absolute top-0 left-0 w-1 h-full bg-teal-500"></div>
+                        <div class="absolute top-6 right-6 p-2.5 bg-slate-100 text-slate-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors cursor-pointer shadow-sm" onclick="alert('Simulation: Ouverture du document Logistic_specifications_ind10_ENG_20231102.pdf')">
+                            <i data-lucide="download" class="w-5 h-5"></i>
+                        </div>
+                        <div class="flex items-start gap-4 mb-6">
+                            <div class="p-4 bg-teal-50 rounded-xl shadow-sm border border-teal-100 text-teal-500 flex-shrink-0">
+                                <i data-lucide="settings" class="w-7 h-7"></i>
+                            </div>
+                            <div class="pr-12">
+                                <h3 class="font-bold text-slate-900 text-xl leading-tight mb-2">PSA Aftermarket Logistic Specifications</h3>
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-teal-100 text-teal-800 text-xs font-bold uppercase tracking-wider">
+                                    Ind 10 • 2023
+                                </span>
+                            </div>
+                        </div>
+                        <div class="text-sm text-slate-600 leading-relaxed flex-grow space-y-4">
+                            <p class="font-medium text-slate-800">Spécifications dédiées exclusivement à la Division Supply Chain des Pièces de Rechange (Spare Parts) de PSA.</p>
+                            <ul class="list-disc pl-5 space-y-2 text-slate-600">
+                                <li><strong>Conditioning & Packing:</strong> Niveaux d'emballage (UV, UC, UM, UA), standards Eurorepar/Bolk, palettes hétérogènes.</li>
+                                <li><strong>Labelling:</strong> Exigences strictes pour les étiquettes ETI1/ETI9, codes-barres Code 39 et mentions obligatoires ("Made In").</li>
+                                <li><strong>Outils & EDI:</strong> Utilisation obligatoire du portail SPEED, EDI V2 revalidation fix rate (€1,798.94).</li>
+                                <li><strong>Pénalités (SSR):</strong> Administrative fix rate (€207.57), pénalités pour véhicules immobilisés VOR (€761.09), loyer journalier pour utilisation des containers réutilisables > 10 jours.</li>
+                            </ul>
+                        </div>
+                        <div class="mt-8 pt-5 border-t border-slate-100">
+                            <a href="#" onclick="alert('Simulation: Ouverture du document Logistic_specifications_ind10_ENG_20231102.pdf')" class="inline-flex items-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors">
+                                Télécharger le PDF complet <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- Doc 4 : VW Shipping Instructions -->
+                    <div class="group relative bg-white rounded-2xl p-8 border border-slate-200 shadow-sm hover:shadow-xl hover:border-blue-300 transition-all duration-300 flex flex-col h-full overflow-hidden">
+                        <div class="absolute top-0 left-0 w-1 h-full bg-sky-500"></div>
+                        <div class="absolute top-6 right-6 p-2.5 bg-slate-100 text-slate-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors cursor-pointer shadow-sm" onclick="alert('Simulation: Ouverture du document General_Shipping_Instructions_V01.33_ENG (2).pdf')">
+                            <i data-lucide="download" class="w-5 h-5"></i>
+                        </div>
+                        <div class="flex items-start gap-4 mb-6">
+                            <div class="p-4 bg-sky-50 rounded-xl shadow-sm border border-sky-100 text-sky-500 flex-shrink-0">
+                                <i data-lucide="truck" class="w-7 h-7"></i>
+                            </div>
+                            <div class="pr-12">
+                                <h3 class="font-bold text-slate-900 text-xl leading-tight mb-2">General Shipping Instructions</h3>
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-sky-100 text-sky-800 text-xs font-bold uppercase tracking-wider">
+                                    Volkswagen Group • V01.34
+                                </span>
+                            </div>
+                        </div>
+                        <div class="text-sm text-slate-600 leading-relaxed flex-grow space-y-4">
+                            <p class="font-medium text-slate-800">Directives générales d'expédition pour les marques Volkswagen (Passenger Cars & Commercial Vehicles), Audi, ŠKODA, SEAT et Lamborghini via route/rail en Europe.</p>
+                            <ul class="list-disc pl-5 space-y-2 text-slate-600">
+                                <li><strong>Modes d'expédition:</strong> Regional freight forwarding, charges directes, et services express (DHL/UPS).</li>
+                                <li><strong>Réglementations:</strong> Gestion rigoureuse des créneaux horaires (Time Slots), dockets camions, collection of goods.</li>
+                                <li><strong>Target Catalogues & Déviations:</strong> Pénalités et "additional costs" appliqués aux fournisseurs/transporteurs pour les erreurs EDI ou les retards de créneaux via la plateforme ONE Group Business.</li>
+                                <li><strong>Documentation & Légal:</strong> VDA 4939 (Delivery note), VDA 4994 (Global Transport Label - GTL), règles de douanes.</li>
+                            </ul>
+                        </div>
+                        <div class="mt-8 pt-5 border-t border-slate-100">
+                            <a href="#" onclick="alert('Simulation: Ouverture du document General_Shipping_Instructions_V01.33_ENG (2).pdf')" class="inline-flex items-center gap-2 text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors">
+                                Télécharger le PDF complet <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                            </a>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- CONTENEUR 3D DIGITAL TWIN -->
+        <!-- ========================================================================= -->
+        <div id="container-3d" class="hidden layout-wrapper">
+            <!-- 3D Canvas -->
+            <div id="map-3d"></div>
+            
+            <!-- Loader interne à la 3D -->
+            <div id="loader-3d">
+                <i data-lucide="loader-2" class="w-12 h-12 animate-spin mb-4 text-indigo-400"></i>
+                <h2 class="text-xl font-bold tracking-widest uppercase">Génération Procédurale 3D</h2>
+                <p class="text-slate-400 mt-2 text-sm">Calcul des matrices géométriques (InstancedMesh)...</p>
+            </div>
+
+            <!-- UI Overlay sur la 3D -->
+            <div id="ui-layer-3d">
+                <div class="glass-panel flex justify-between items-start">
+                    <div>
+                        <h1 class="text-xl font-bold text-indigo-300 flex items-center gap-2 m-0 uppercase tracking-wide">
+                            <i data-lucide="box" class="w-6 h-6"></i> Digital Twin 3D (Haute Fidélité)
+                        </h1>
+                        <p class="text-slate-300 text-xs mt-1">Ajustement dynamique des caisses pour un rendu visuel parfait (Logic 2 by X)</p>
+                    </div>
+                    <div class="controls-hint">
+                        <span><kbd>C. Gauche</kbd> Orbiter</span>
+                        <span><kbd>C. Droit</kbd> Pan</span>
+                        <span><kbd>Molette</kbd> Zoom</span>
+                    </div>
+                </div>
+
+                <div class="flex justify-between items-end">
+                    <div class="glass-panel flex flex-wrap gap-3 max-w-[600px]" id="legend-3d"></div>
+                    <div class="glass-panel text-right">
+                        <div class="stat-item">
+                            <div class="stat-val text-blue-400" id="stat-racks">0</div>
+                            <div class="stat-lbl">Zones Racks</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-val text-amber-400" id="stat-pallets">0</div>
+                            <div class="stat-lbl">Objets (Instances)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
-    <div class="canvas-controls">
-      <button class="ctrl-btn" onclick="resetCamera()">&#x2316; Reset Camera</button>
-      <button class="ctrl-btn" onclick="toggleAutoRotate()">&#x21BB; Auto Rotate</button>
-      <button class="ctrl-btn" onclick="toggleWireframe()">&#x2B21; Wireframe</button>
+
+    <!-- TOOLTIP 2D Layout -->
+    <div id="tt" class="layout-wrapper">
+      <div class="ttb" id="tt-dest">—</div>
+      <div class="ttr"><span class="ttl">Projets consolidés</span><span class="ttv" id="tt-proj" style="max-width:130px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="">—</span></div>
+      <div class="ttr"><span class="ttl">Catégorie (Flux)</span><span class="ttv" id="tt-type">—</span></div>
+      <div class="ttr"><span class="ttl">Priorité (ABC)</span><span class="ttv" id="tt-abc" style="color: #f59e0b;">—</span></div>
+      <div class="ttr"><span class="ttl">Zone Physique</span><span class="ttv" id="tt-zname">—</span></div>
+      <div style="height:1px; background:rgba(255,255,255,0.1); margin:6px 0;"></div>
+      <div class="ttr"><span class="ttl" style="color:#94a3b8">Stock Total (Dest.)</span><span class="ttv" style="color:#cbd5e1" id="tt-stock">0 pal.</span></div>
+      <div class="ttr"><span class="ttl" style="color:#60a5fa; font-weight:600;">Placées ici</span><span class="ttv" style="color:#60a5fa; font-weight:700;" id="tt-placed">0 pal.</span></div>
+      <div class="ttr"><span class="ttl">Gerbabilité locale</span><span class="ttv" id="tt-gerb">0 niv.</span></div>
+      <div class="ttr" id="tt-ov-r" style="display:none;">
+        <span class="ttl text-red-400">⚠ Débordement</span>
+        <span class="ttv text-red-400" id="tt-ov">0 pal.</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:7px;margin-bottom:2px;">
+        <span style="font-size:9px;color:#94a3b8;">Occupation Globale (Zone)</span>
+        <span style="font-size:9px;font-weight:700;font-family:'IBM Plex Mono',monospace;" id="tt-pct">0%</span>
+      </div>
+      <div class="bar-bg"><div class="bar-fg" id="tt-bar"></div></div>
     </div>
-    <div id="tooltip-3d" class="tooltip-3d"></div>
-    <div class="legend" id="scene-legend">
-      <h4>Legend</h4>
-      <div class="legend-item"><div class="legend-dot" style="background:#00d4ff;"></div>Origin Hub</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#00ff88;"></div>Destination</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#ffd700;"></div>In Transit</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#ff6b35;"></div>Critical / Alert</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#9b59ff;"></div>AFM Client</div>
-    </div>
-  </section>
 
-  <aside>
-    <div class="panel-header">
-      <h2 id="panel-title">Shipment Records</h2>
-      <span class="badge-count" id="record-count">0</span>
-    </div>
-    <div class="kpi-grid" id="kpi-grid">
-      <div class="kpi-card blue"><div class="kpi-label">Total Items</div><div class="kpi-value" id="kpi-total">&ndash;</div></div>
-      <div class="kpi-card green"><div class="kpi-label">Stock Palettes</div><div class="kpi-value" id="kpi-stock">&ndash;</div></div>
-      <div class="kpi-card orange"><div class="kpi-label">Planning Days</div><div class="kpi-value" id="kpi-days">&ndash;</div></div>
-      <div class="kpi-card purple"><div class="kpi-label">Destinations</div><div class="kpi-value" id="kpi-dest">&ndash;</div></div>
-    </div>
-    <div id="error-banner"></div>
-    <div class="search-bar">
-      <input type="text" id="search-input" placeholder="Search destination, project&hellip;" oninput="filterTable()" />
-      <select class="filter-select" id="filter-select" onchange="filterTable()"><option value="">All</option></select>
-    </div>
-    <div class="table-wrap">
-      <table class="data-table" id="data-table">
-        <thead id="table-head"></thead>
-        <tbody id="table-body"></tbody>
-      </table>
-    </div>
-  </aside>
-</main>
+    <script>
+        let myChart = null; 
+        let currentView = 'SERIE'; 
+        let autoRefresh = null;
+        const ttEl = document.getElementById('tt');
 
-<div id="detail-panel">
-  <button class="detail-close" onclick="closeDetail()">&#x2715; Close</button>
-  <div id="detail-content"></div>
-</div>
+        // ════════════════════════════════════════════════════════════════════
+        // PLAN EXACT 2D
+        // ════════════════════════════════════════════════════════════════════
+        const PLAN = [
+          // ── STATIQUES
+          { id:'camion',  type:'static', cls:'z-camion',   label:'Zone Camion', x:2, y:2, w:33, h:38 },
+          { id:'forklift',type:'static', cls:'z-forklift', label:'Zone charge Du forklift', x:37, y:2, w:20, h:10 },
+          { id:'q5',      type:'static', cls:'z-quai',     label:'Q 5', x:71, y:2, w:4, h:6 },
+          { id:'agv',     type:'static', cls:'z-agv',      label:'Zone IN / OUT AGV', x:80, y:8, w:16, h:18 },
+          { id:'bureau',  type:'static', cls:'z-bureau',   label:'Zone bureau', x:71, y:72, w:27, h:26 },
+          { id:'q1',      type:'static', cls:'z-quai', label:'Q 1', x:2,   y:42, w:4, h:6 },
+          { id:'q2',      type:'static', cls:'z-quai', label:'Q 2', x:6.8, y:42, w:4, h:6 },
+          { id:'q3',      type:'static', cls:'z-quai', label:'Q 3', x:11.6,y:42, w:4, h:6 },
+          { id:'q4',      type:'static', cls:'z-quai', label:'Q 4', x:16.4,y:42, w:4, h:6 },
+          { id:'debort',  type:'static', cls:'z-debort', label:'Zone de debort', x:2, y:92, w:18.4, h:6 },
+          { id:'couloir', type:'static', cls:'z-couloir', label:'', x:22.5, y:62.5, w:47, h:7.5 },
 
-<script>
-var currentView = 'SERIE';
-var allData = [];
-var filteredData = [];
-var scene, camera, renderer, animationId;
-var autoRotate = false;
-var wireframe = false;
-var nodeMeshes = [];
-var linkLines = [];
-var raycaster, mouse;
-var show3D = true;
+          // ── PREP (SÉRIE ONLY) ──
+          { id:'prep1', type:'prep', label:'SÉRIE', x:2,    y:50, w:4, h:40, emp:26, gerb:3, cols:2, rows:13 },
+          { id:'prep2', type:'prep', label:'SÉRIE', x:6.8,  y:50, w:4, h:40, emp:26, gerb:3, cols:2, rows:13 },
+          { id:'prep3', type:'prep', label:'SÉRIE', x:11.6, y:50, w:4, h:40, emp:26, gerb:3, cols:2, rows:13 },
+          { id:'prep4', type:'prep', label:'SÉRIE', x:16.4, y:50, w:4, h:40, emp:26, gerb:3, cols:2, rows:13 },
 
-function updateTime() {
-  var el = document.getElementById('live-time');
-  if (el) el.textContent = new Date().toLocaleString('fr-FR', { hour12: false });
-}
-setInterval(updateTime, 1000);
-updateTime();
+          // ── LIGNE MILIEU — SÉRIE EXCLUSIVE ──
+          { id:'s32_1', type:'serie', label:'SÉRIE', x:25.0, y:46.0, w:3.5, h:15.5, emp:16, gerb:2, cols:2, rows:8  },
+          { id:'s32_2', type:'serie', label:'SÉRIE', x:28.8, y:46.0, w:3.5, h:15.5, emp:16, gerb:2, cols:2, rows:8  },
+          { id:'s32_3', type:'serie', label:'SÉRIE', x:32.6, y:46.0, w:3.5, h:15.5, emp:16, gerb:2, cols:2, rows:8  },
+          { id:'s32_4', type:'serie', label:'SÉRIE', x:36.4, y:46.0, w:3.5, h:15.5, emp:16, gerb:2, cols:2, rows:8  },
+          { id:'s56_1', type:'serie', label:'SÉRIE', x:40.2, y:40.0, w:3.5, h:21.5, emp:28, gerb:2, cols:2, rows:14 },
+          { id:'s56_2', type:'serie', label:'SÉRIE', x:44.0, y:40.0, w:3.5, h:21.5, emp:28, gerb:2, cols:2, rows:14 },
+          { id:'s72_1', type: 'mixte', label: 'MIXTE', x:47.8, y:35.0, w:3.5, h:26.5, emp:24, gerb:3, cols:2, rows:12 },
+          
+          // ── LIGNE MILIEU — ZONE MIXTE ──
+          { id:'s72_2', type:'mixte', label:'MIXTE', x:51.6, y:35.0, w:3.5, h:26.5, emp:24, gerb:3, cols:2, rows:12 },
+          { id:'s72_3', type:'mixte', label:'MIXTE', x:55.4, y:35.0, w:3.5, h:26.5, emp:24, gerb:3, cols:2, rows:12 },
+          { id:'s72_4', type:'mixte', label:'MIXTE', x:59.2, y:35.0, w:3.5, h:26.5, emp:24, gerb:3, cols:2, rows:12 },
+          { id:'s72_5', type:'mixte', label:'MIXTE', x:63.0, y:35.0, w:3.5, h:26.5, emp:24, gerb:3, cols:2, rows:12 },
 
-function loadData(viewType) {
-  document.getElementById('loading-overlay').style.display = 'flex';
-  document.getElementById('error-banner').style.display = 'none';
-  if (typeof google !== 'undefined' && google.script) {
-    google.script.run
-      .withSuccessHandler(function(result) {
-        document.getElementById('loading-overlay').style.display = 'none';
-        allData = result.data || [];
-        filteredData = allData.slice();
-        renderAll();
-      })
-      .withFailureHandler(function(err) {
-        document.getElementById('loading-overlay').style.display = 'none';
-        showError('Failed to load data: ' + (err.message || err));
-        allData = [];
-        filteredData = [];
-        renderAll();
-      })
-      .getShipmentData(viewType);
-  } else {
-    setTimeout(function() {
-      document.getElementById('loading-overlay').style.display = 'none';
-      allData = generateDemoData(viewType);
-      filteredData = allData.slice();
-      renderAll();
-    }, 600);
-  }
-}
+          // ── LIGNE BAS — SÉRIE EXCLUSIVE ──
+          { id:'sb54_l',  type:'serie', label:'SÉRIE', x:23.0, y:71.5, w:3.5, h:17.5, emp:18, gerb:3, cols:2, rows:9  },
+          { id:'sb72_1',  type:'serie', label:'SÉRIE', x:26.8, y:71.5, w:3.5, h:23.5, emp:24, gerb:3, cols:2, rows:12 },
+          { id:'sb72_2',  type:'serie', label:'SÉRIE', x:30.6, y:71.5, w:3.5, h:23.5, emp:24, gerb:3, cols:2, rows:12 },
+          { id:'sb72_3',  type:'serie', label:'SÉRIE', x:34.4, y:71.5, w:3.5, h:23.5, emp:24, gerb:3, cols:2, rows:12 },
+          { id:'sb72_4',  type:'serie', label:'SÉRIE', x:38.2, y:71.5, w:3.5, h:23.5, emp:24, gerb:3, cols:2, rows:12 },
+          { id:'sb72_5',  type:'serie', label:'SÉRIE', x:42.0, y:71.5, w:3.5, h:23.5, emp:24, gerb:3, cols:2, rows:12 },
+          { id:'sb72_6',  type:'serie', label:'SÉRIE', x:45.8, y:71.5, w:3.5, h:23.5, emp:24, gerb:3, cols:2, rows:12 },
 
-function generateDemoData(viewType) {
-  var i, items = [];
-  if (viewType === 'SERIE') {
-    var dests = ['ZARAGOZE','SOMACA','VIGO','PAMPLONA','MALAISIE','ARGENTINE','RTE'];
-    var projs = ['P2X MV','XJI PH2','P2JO MCM','P2JORL FDR','XJI PH1','POLO CKD','K9 MCM','TROC','P2XHL'];
-    for (i = 0; i < 45; i++) {
-      var days = [Math.floor(Math.random()*20),Math.floor(Math.random()*15),Math.floor(Math.random()*18),
-                  Math.floor(Math.random()*12),Math.floor(Math.random()*22),Math.floor(Math.random()*10)];
-      items.push({
-        destination: dests[i % dests.length], project: projs[i % projs.length],
-        description: 'REF-' + (1000+i),
-        palette: Math.floor(Math.random()*50)+5, stockPal: Math.floor(Math.random()*30),
-        stockRem: Math.floor(Math.random()*8), rawDays: days,
-        totalPlanning: days.reduce(function(a,b){return a+b;},0),
-        gerb: [2,3,4][i%3], exp2: [1,2,3,5,6,12,19,22,26,33,53,120,142,156,160][i%15]
-      });
-    }
-  } else {
-    var clients = ['RENAULT ESPAGNE','RENAULT MAROC','VOLKSWAGEN','STELLANTIS','TOYOTA'];
-    var ps = ['P2X AFM','XJI AFM','K9 AFM','J92 AFM','X52 AFM'];
-    for (i = 0; i < 35; i++) {
-      items.push({
-        client: clients[i % clients.length], project: ps[i % ps.length],
-        description: 'AFM-REF-' + (2000+i),
-        cjt: Math.floor(Math.random()*100)+10, palletsCjt: Math.floor(Math.random()*40)+5,
-        palletsFg: Math.floor(Math.random()*35)+3, remorquesFg: Math.floor(Math.random()*10)+1,
-        besoinPalFg: Math.floor(Math.random()*50)+5, demandeRemFg: Math.floor(Math.random()*8)+1
-      });
-    }
-  }
-  return items;
-}
+          // ── LIGNE BAS — ZONE MIXTE ──
+          { id:'sb72_7',  type:'mixte', label:'MIXTE', x:49.6, y:71.5, w:3.5, h:23.5, emp:24, gerb:3, cols:2, rows:12 },
+          { id:'sb72_8',  type:'mixte', label:'MIXTE', x:53.4, y:71.5, w:3.5, h:23.5, emp:24, gerb:3, cols:2, rows:12 },
+          { id:'sb72_9',  type:'mixte', label:'MIXTE', x:57.2, y:71.5, w:3.5, h:23.5, emp:24, gerb:3, cols:2, rows:12 },
+          { id:'sb72_10', type:'mixte', label:'MIXTE', x:61.0, y:71.5, w:3.5, h:23.5, emp:24, gerb:3, cols:2, rows:12 },
+          { id:'sb54_r',  type:'mixte', label:'MIXTE', x:64.8, y:71.5, w:3.5, h:17.5, emp:18, gerb:3, cols:2, rows:9  },
 
-function renderAll() { updateKPIs(); updateFilterOptions(); renderTable(); build3DScene(); }
+          // ── ZONES ROUGES : AFM / CJT EXCLUSIF ─────────────────────────
+          { id:'za1', type:'serie-a', label:'CJT', x:37, y:13.0, w:28, h:2.6, emp:26, gerb:3, cols:13, rows:2 },
+          { id:'za2', type:'serie-a', label:'CJT', x:37, y:16.5, w:28, h:2.6, emp:26, gerb:3, cols:13, rows:2 },
+          { id:'za3', type:'serie-a', label:'CJT', x:37, y:20.0, w:28, h:2.6, emp:26, gerb:3, cols:13, rows:2 },
+          { id:'za4', type:'serie-a', label:'CJT', x:37, y:23.5, w:28, h:2.6, emp:26, gerb:3, cols:13, rows:2 },
+          { id:'za5', type:'serie-a', label:'CJT', x:37, y:27.0, w:28, h:2.6, emp:26, gerb:3, cols:13, rows:2 },
+          { id:'za6', type:'serie-a', label:'CJT', x:37, y:30.5, w:28, h:2.6, emp:26, gerb:3, cols:13, rows:2 },
+          
+          { id:'cerclage', type:'cerclage_dyn', label:'CERCLAGE', x:76, y:28, w:22, h:6, emp:20, gerb:3, cols:10, rows:2 },
+          { id:'afm1', type:'afm', label:'AFM', x:76, y:36, w:22, h:7, emp:20, gerb:3, cols:10, rows:2 },
+          { id:'afm2', type:'afm', label:'AFM', x:76, y:44, w:22, h:7, emp:20, gerb:3, cols:10, rows:2 },
+          { id:'cjt1', type:'cjt', label:'CJT', x:76, y:52, w:22, h:7, emp:10, gerb:3, cols:10, rows:1 },
+          { id:'cjt2', type:'cjt', label:'CJT', x:76, y:60, w:22, h:7, emp:10, gerb:3, cols:10, rows:1 }
+        ];
 
-function updateKPIs() {
-  var total = filteredData.length;
-  document.getElementById('kpi-total').textContent = total;
-  document.getElementById('record-count').textContent = total;
-  if (currentView === 'SERIE') {
-    document.getElementById('kpi-stock').textContent = filteredData.reduce(function(s,r){return s+(r.stockPal||0);},0);
-    document.getElementById('kpi-days').textContent  = filteredData.reduce(function(s,r){return s+(r.totalPlanning||0);},0);
-    document.getElementById('kpi-dest').textContent  = (function(){ var s={}; filteredData.forEach(function(r){s[r.destination]=1;}); return Object.keys(s).length; })();
-    document.querySelector('.kpi-card.green .kpi-label').textContent  = 'Stock Palettes';
-    document.querySelector('.kpi-card.orange .kpi-label').textContent = 'Planning Days';
-    document.querySelector('.kpi-card.purple .kpi-label').textContent = 'Destinations';
-  } else {
-    document.getElementById('kpi-stock').textContent = filteredData.reduce(function(s,r){return s+(r.palletsCjt||0);},0);
-    document.getElementById('kpi-days').textContent  = filteredData.reduce(function(s,r){return s+(r.remorquesFg||0);},0);
-    document.getElementById('kpi-dest').textContent  = (function(){ var s={}; filteredData.forEach(function(r){s[r.client]=1;}); return Object.keys(s).length; })();
-    document.querySelector('.kpi-card.green .kpi-label').textContent  = 'Palettes CJT';
-    document.querySelector('.kpi-card.orange .kpi-label').textContent = 'Remorques FG';
-    document.querySelector('.kpi-card.purple .kpi-label').textContent = 'Clients';
-  }
-}
+        // ════════════════════════════════════════════════════════════════════
+        // PLAN EXACT 2D - FUTURE STATE
+        // ════════════════════════════════════════════════════════════════════
+        const PLAN_FUTURE = [
+          // ── STATIQUES
+          { id:'f_camion',  type:'static', cls:'z-camion-empty', label:'ZONE CAMION(stationnement vide)', x:2, y:2, w:30, h:18 },
+          { id:'f_q1',      type:'static', cls:'z-quai', label:'QUAI 1', x:2, y:22, w:6, h:6 },
+          { id:'f_q2',      type:'static', cls:'z-quai', label:'QUAI 2', x:10, y:22, w:6, h:6 },
+          { id:'f_q3',      type:'static', cls:'z-quai', label:'QUAI 3', x:18, y:22, w:6, h:6 },
+          { id:'f_q4',      type:'static', cls:'z-quai', label:'QUAI 4', x:48, y:2, w:8, h:6 },
+          { id:'f_cerclage',type:'static', cls:'z-stockage', label:'Zone cerclage +<br>Decharge et charge<br>AGV', x:75, y:6, w:23, h:15 },
+          { id:'f_bureau',  type:'static', cls:'z-bureau', label:'Zone bureau de<br>expedition', x:75, y:64, w:23, h:25 },
+          { id:'f_debort',  type:'static', cls:'z-debort', label:'⚠ ZONE DE DEBORT', x:2, y:92, w:22, h:5 },
 
-function updateFilterOptions() {
-  var sel = document.getElementById('filter-select');
-  var seen = {}, values = [];
-  allData.forEach(function(r){ var k = currentView==='SERIE'?r.destination:r.client; if(k&&!seen[k]){seen[k]=1;values.push(k);} });
-  values.sort();
-  sel.innerHTML = '<option value="">All</option>';
-  values.forEach(function(v){ var o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o); });
-}
+          // ── COLONNES GAUCHE (PREP / CAMION)
+          { id:'f_prep1', type:'prep', label:'CAMION', x:2, y:30, w:6, h:60, emp:26, gerb:3, cols:2, rows:13 },
+          { id:'f_prep2', type:'prep', label:'CAMION', x:10, y:30, w:6, h:60, emp:26, gerb:3, cols:2, rows:13 },
+          { id:'f_prep3', type:'prep', label:'CAMION', x:18, y:30, w:6, h:60, emp:26, gerb:3, cols:2, rows:13 },
 
-function filterTable() {
-  var q = document.getElementById('search-input').value.toLowerCase();
-  var filt = document.getElementById('filter-select').value;
-  filteredData = allData.filter(function(r) {
-    var ms = !q || (currentView==='SERIE'
-      ? ((r.destination||'').toLowerCase().includes(q)||(r.project||'').toLowerCase().includes(q)||(r.description||'').toLowerCase().includes(q))
-      : ((r.client||'').toLowerCase().includes(q)||(r.project||'').toLowerCase().includes(q)||(r.description||'').toLowerCase().includes(q)));
-    var mf = !filt || (currentView==='SERIE'?r.destination===filt:r.client===filt);
-    return ms && mf;
-  });
-  updateKPIs(); renderTable(); build3DScene();
-}
+          // ── MILIEU - RACKS HORIZONTAUX
+          // Haut Gauche (36)
+          { id:'f_c1_l', type:'serie', label:'36', x:30, y:12, w:18, h:6.5, emp:12, gerb:3, cols:6, rows:2 },
+          { id:'f_c2_l', type:'serie', label:'36', x:30, y:20, w:18, h:6.5, emp:12, gerb:3, cols:6, rows:2 },
+          { id:'f_c3_l', type:'serie', label:'36', x:30, y:28, w:18, h:6.5, emp:12, gerb:3, cols:6, rows:2 },
+          { id:'f_c4_l', type:'serie', label:'36', x:30, y:36, w:18, h:6.5, emp:12, gerb:3, cols:6, rows:2 },
 
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+          // Haut Droite (36)
+          { id:'f_c1_r', type:'mixte', label:'36', x:50, y:12, w:18, h:6.5, emp:12, gerb:3, cols:6, rows:2 },
+          { id:'f_c2_r', type:'mixte', label:'36', x:50, y:20, w:18, h:6.5, emp:12, gerb:3, cols:6, rows:2 },
+          { id:'f_c3_r', type:'mixte', label:'36', x:50, y:28, w:18, h:6.5, emp:12, gerb:3, cols:6, rows:2 },
+          { id:'f_c4_r', type:'mixte', label:'36', x:50, y:36, w:18, h:6.5, emp:12, gerb:3, cols:6, rows:2 },
 
-function renderTable() {
-  var head = document.getElementById('table-head');
-  var body = document.getElementById('table-body');
-  if (currentView === 'SERIE') {
-    head.innerHTML = '<tr><th>Destination</th><th>Project</th><th>Stock Pal</th><th>Total Days</th><th>Palette</th></tr>';
-    body.innerHTML = '';
-    var maxD = Math.max.apply(null, filteredData.map(function(r){return r.totalPlanning||0;}).concat([1]));
-    filteredData.forEach(function(r, idx) {
-      var pct = Math.round(((r.totalPlanning||0)/maxD)*100);
-      var sc = r.stockPal>20?'pill-green':r.stockPal>5?'pill-blue':'pill-orange';
-      var tr = document.createElement('tr');
-      tr.onclick = (function(row,i){ return function(){ showDetail(row,i); }; })(r, idx);
-      tr.innerHTML = '<td><span class="pill pill-blue">'+escHtml(r.destination||'')+'</span></td>'
-        +'<td style="color:var(--text-secondary);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml(r.project||'')+'">'+escHtml(r.project||'')+'</td>'
-        +'<td><span class="pill '+sc+'">'+r.stockPal+'</span></td>'
-        +'<td><div class="bar-mini"><div class="bar-bg"><div class="bar-fill" style="width:'+pct+'%"></div></div><span style="font-size:0.7rem;color:var(--text-secondary)">'+r.totalPlanning+'</span></div></td>'
-        +'<td style="color:var(--accent-yellow)">'+r.palette+'</td>';
-      body.appendChild(tr);
-    });
-  } else {
-    head.innerHTML = '<tr><th>Client</th><th>Project</th><th>CJT</th><th>Pal FG</th><th>Rem FG</th></tr>';
-    body.innerHTML = '';
-    filteredData.forEach(function(r, idx) {
-      var tr = document.createElement('tr');
-      tr.onclick = (function(row,i){ return function(){ showDetail(row,i); }; })(r, idx);
-      var rc = r.remorquesFg>5?'pill-orange':'pill-green';
-      tr.innerHTML = '<td><span class="pill pill-purple">'+escHtml(r.client||'')+'</span></td>'
-        +'<td style="color:var(--text-secondary);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml(r.project||'')+'">'+escHtml(r.project||'')+'</td>'
-        +'<td style="color:var(--accent-blue)">'+r.cjt+'</td>'
-        +'<td>'+r.palletsFg+'</td>'
-        +'<td><span class="pill '+rc+'">'+r.remorquesFg+'</span></td>';
-      body.appendChild(tr);
-    });
-  }
-}
+          // Bas (72)
+          { id:'f_b1', type:'serie', label:'72', x:30, y:45, w:38, h:7.5, emp:24, gerb:3, cols:12, rows:2 },
+          { id:'f_b2', type:'serie', label:'72', x:30, y:54.5, w:38, h:7.5, emp:24, gerb:3, cols:12, rows:2 },
+          { id:'f_b3', type:'serie', label:'72', x:30, y:64, w:38, h:7.5, emp:24, gerb:3, cols:12, rows:2 },
+          { id:'f_b4', type:'serie', label:'72', x:30, y:73.5, w:38, h:7.5, emp:24, gerb:3, cols:12, rows:2 },
 
-function showDetail(r, idx) {
-  var rows = document.querySelectorAll('#table-body tr');
-  rows.forEach(function(tr){tr.classList.remove('selected');});
-  if (rows[idx]) rows[idx].classList.add('selected');
-  var content = document.getElementById('detail-content');
-  if (currentView === 'SERIE') {
-    var maxDay = Math.max.apply(null, r.rawDays.concat([1]));
-    var bars = r.rawDays.map(function(v,i){
-      var h = Math.round((v/maxDay)*50);
-      return '<div class="day-bar-wrap"><div class="day-bar" style="height:'+h+'px" title="D'+(i+1)+': '+v+'"></div><div class="day-label">D'+(i+1)+'</div></div>';
-    }).join('');
-    content.innerHTML = '<div class="detail-title">'+escHtml(r.destination)+'</div>'
-      +'<div class="detail-sub">'+escHtml(r.project)+' &rsaquo; '+escHtml(r.description)+'</div>'
-      +'<div class="detail-section"><h3>Stock &amp; Palette</h3>'
-      +'<div class="detail-row"><span class="dr-label">Stock Palettes</span><span class="dr-value" style="color:var(--accent-green)">'+r.stockPal+'</span></div>'
-      +'<div class="detail-row"><span class="dr-label">Stock Remorques</span><span class="dr-value">'+r.stockRem+'</span></div>'
-      +'<div class="detail-row"><span class="dr-label">Palette Commande</span><span class="dr-value" style="color:var(--accent-yellow)">'+r.palette+'</span></div>'
-      +'<div class="detail-row"><span class="dr-label">Positions EXP2</span><span class="dr-value" style="color:var(--accent-blue)">'+r.exp2+'</span></div>'
-      +'</div>'
-      +'<div class="detail-section"><h3>Gerbabilit&eacute;</h3>'
-      +'<div class="detail-row"><span class="dr-label">Niveau</span><span class="dr-value">'+r.gerb+' couches</span></div>'
-      +'</div>'
-      +'<div class="detail-section"><h3>Planning (6 jours) &mdash; Total: '+r.totalPlanning+'</h3>'
-      +'<div class="days-chart">'+bars+'</div></div>';
-  } else {
-    content.innerHTML = '<div class="detail-title">'+escHtml(r.client)+'</div>'
-      +'<div class="detail-sub">'+escHtml(r.project)+' &rsaquo; '+escHtml(r.description)+'</div>'
-      +'<div class="detail-section"><h3>CJT &amp; Palettes</h3>'
-      +'<div class="detail-row"><span class="dr-label">CJT</span><span class="dr-value" style="color:var(--accent-blue)">'+r.cjt+'</span></div>'
-      +'<div class="detail-row"><span class="dr-label">Palettes CJT</span><span class="dr-value">'+r.palletsCjt+'</span></div>'
-      +'<div class="detail-row"><span class="dr-label">Palettes FG</span><span class="dr-value">'+r.palletsFg+'</span></div>'
-      +'</div>'
-      +'<div class="detail-section"><h3>Remorques &amp; Besoin</h3>'
-      +'<div class="detail-row"><span class="dr-label">Remorques FG</span><span class="dr-value" style="color:var(--accent-orange)">'+r.remorquesFg+'</span></div>'
-      +'<div class="detail-row"><span class="dr-label">Besoin Pal FG</span><span class="dr-value">'+r.besoinPalFg+'</span></div>'
-      +'<div class="detail-row"><span class="dr-label">Demande Rem FG</span><span class="dr-value" style="color:var(--accent-yellow)">'+r.demandeRemFg+'</span></div>'
-      +'</div>';
-  }
-  document.getElementById('detail-panel').style.display = 'block';
-}
+          // Ligne tout en bas (40)
+          { id:'f_bot', type:'mixte', label:'40', x:6, y:84, w:62, h:6, emp:20, gerb:2, cols:20, rows:1 },
 
-function closeDetail() {
-  document.getElementById('detail-panel').style.display = 'none';
-  document.querySelectorAll('#table-body tr').forEach(function(tr){tr.classList.remove('selected');});
-}
+          // ── DROITE - RACKS (AFM/CJT)
+          { id:'f_r1', type:'afm', label:'36', x:75, y:23, w:23, h:6.5, emp:12, gerb:3, cols:6, rows:2 },
+          { id:'f_r2', type:'afm', label:'36', x:75, y:31, w:23, h:6.5, emp:12, gerb:3, cols:6, rows:2 },
+          { id:'f_r3', type:'cjt', label:'48', x:75, y:39, w:23, h:6.5, emp:16, gerb:3, cols:8, rows:2 },
+          { id:'f_r4', type:'cjt', label:'48', x:75, y:47, w:23, h:6.5, emp:16, gerb:3, cols:8, rows:2 },
+          { id:'f_r5', type:'cjt', label:'48', x:75, y:55, w:23, h:6.5, emp:16, gerb:3, cols:8, rows:2 },
+        ];
 
-// THREE.JS
-var cameraOrbit = { drag:false, lx:0, ly:0, theta:0.4, phi:0.45, radius:45 };
+        // ════════════════════════════════════════════════════════════════════
+        // PLAN EXACT 3D (Adapté pour la génération 3D depuis le code de test)
+        // ════════════════════════════════════════════════════════════════════
+        const PLAN_3D = [
+          // STATIQUES
+          { id:'camion',  type:'static', cls:'z-camion',  label:'Zone Camion', x:2, y:2, w:38, h:38 },
+          { id:'forklift',type:'static', cls:'z-forklift', label:'Zone charge Du forklift', x:42, y:2, w:20, h:12 },
+          { id:'q1',      type:'static', cls:'z-quai', label:'Q 1', x:2, y:42, w:4, h:6 },
+          { id:'q2',      type:'static', cls:'z-quai', label:'Q 2', x:7, y:42, w:4, h:6 },
+          { id:'q3',      type:'static', cls:'z-quai', label:'Q 3', x:12,y:42, w:4, h:6 },
+          { id:'q4',      type:'static', cls:'z-quai', label:'Q 4', x:17,y:42, w:4, h:6 },
+          { id:'q5',      type:'static', cls:'z-quai', label:'Q 5', x:72, y:3, w:5, h:7 },
+          { id:'agv',     type:'static', cls:'z-agv',  label:'Zone IN / OUT<br>AGV', x:82, y:10, w:15, h:20 },
+          { id:'bureau',  type:'static', cls:'z-bureau', label:'Zone bureau', x:75, y:75, w:22, h:22 },
+          { id:'kardex',  type:'static', cls:'z-kardex', label:'Kardex', x:66, y:80, w:7, h:15 },
+          { id:'debort',  type:'static', cls:'z-debort', label:'Zone de debort', x:2, y:92, w:19, h:6 },
 
-function initThree() {
-  var canvas = document.getElementById('three-canvas');
-  var section = document.getElementById('canvas-section');
-  scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x080c18);
-  scene.fog = new THREE.FogExp2(0x080c18, 0.018);
-  camera = new THREE.PerspectiveCamera(55, section.clientWidth/section.clientHeight, 0.1, 500);
-  updateCameraOrbit();
-  renderer = new THREE.WebGLRenderer({canvas:canvas, antialias:true});
-  renderer.setSize(section.clientWidth, section.clientHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  scene.add(new THREE.AmbientLight(0x0a1530, 2));
-  var dl = new THREE.DirectionalLight(0x00d4ff, 1.5); dl.position.set(20,30,20); scene.add(dl);
-  var p1 = new THREE.PointLight(0x9b59ff, 2, 60); p1.position.set(-20,10,0); scene.add(p1);
-  var p2 = new THREE.PointLight(0x00ff88, 1.5, 60); p2.position.set(20,5,-15); scene.add(p2);
-  scene.add(new THREE.GridHelper(80, 30, 0x1e3060, 0x111a33));
-  raycaster = new THREE.Raycaster();
-  mouse = new THREE.Vector2(-9999,-9999);
-  setupOrbit(canvas);
-  window.addEventListener('resize', function(){
-    var w=section.clientWidth, h=section.clientHeight;
-    camera.aspect=w/h; camera.updateProjectionMatrix(); renderer.setSize(w,h);
-  });
-  animLoop();
-}
+          // RACKS GAUCHE - 26 (Vertical) -> 2 rangées de 13
+          { id:'v26_1', type:'bleu26', label:'26', x:2,  y:52, w:3.5, h:38, emp:26, gerb:1, cols:2, rows:13 },
+          { id:'v26_2', type:'bleu26', label:'26', x:7,  y:52, w:3.5, h:38, emp:26, gerb:1, cols:2, rows:13 },
+          { id:'v26_3', type:'bleu26', label:'26', x:12, y:52, w:3.5, h:38, emp:26, gerb:1, cols:2, rows:13 },
+          { id:'v26_4', type:'bleu26', label:'26', x:17, y:52, w:3.5, h:38, emp:26, gerb:1, cols:2, rows:13 },
 
-function setupOrbit(canvas) {
-  canvas.addEventListener('mousedown', function(e){ cameraOrbit.drag=true; cameraOrbit.lx=e.clientX; cameraOrbit.ly=e.clientY; });
-  window.addEventListener('mouseup', function(){ cameraOrbit.drag=false; });
-  canvas.addEventListener('mousemove', function(e){
-    var rect=canvas.getBoundingClientRect();
-    mouse.x=((e.clientX-rect.left)/rect.width)*2-1;
-    mouse.y=-((e.clientY-rect.top)/rect.height)*2+1;
-    handleHover(e);
-    if (!cameraOrbit.drag) return;
-    cameraOrbit.theta -= (e.clientX-cameraOrbit.lx)*0.008;
-    cameraOrbit.phi = Math.max(0.1, Math.min(Math.PI/2-0.05, cameraOrbit.phi+(e.clientY-cameraOrbit.ly)*0.008));
-    cameraOrbit.lx=e.clientX; cameraOrbit.ly=e.clientY; updateCameraOrbit();
-  });
-  canvas.addEventListener('wheel', function(e){
-    cameraOrbit.radius=Math.max(10,Math.min(100,cameraOrbit.radius+e.deltaY*0.05)); updateCameraOrbit();
-  });
-}
+          // RACKS MILIEU - 26 (Horizontal Haut) -> 2 rangées de 13
+          { id:'h26_1', type:'bleu26', label:'26', x:26, y:50, w:20, h:4, emp:26, gerb:1, cols:13, rows:2 },
+          { id:'h26_2', type:'bleu26', label:'26', x:26, y:55, w:20, h:4, emp:26, gerb:1, cols:13, rows:2 },
+          { id:'h26_3', type:'bleu26', label:'26', x:26, y:60, w:20, h:4, emp:26, gerb:1, cols:13, rows:2 },
 
-function updateCameraOrbit() {
-  var r=cameraOrbit.radius, t=cameraOrbit.theta, p=cameraOrbit.phi;
-  camera.position.set(r*Math.sin(p)*Math.sin(t), r*Math.cos(p), r*Math.sin(p)*Math.cos(t));
-  camera.lookAt(0,0,0);
-}
+          // RACKS MILIEU - 26 (Horizontal Bas) -> 2 rangées de 13
+          { id:'h26_4', type:'bleu26', label:'26', x:26, y:78, w:20, h:4, emp:26, gerb:1, cols:13, rows:2 },
+          { id:'h26_5', type:'bleu26', label:'26', x:26, y:83, w:20, h:4, emp:26, gerb:1, cols:13, rows:2 },
+          { id:'h26_6', type:'bleu26', label:'26', x:26, y:88, w:20, h:4, emp:26, gerb:1, cols:13, rows:2 },
 
-function animLoop() {
-  animationId = requestAnimationFrame(animLoop);
-  if (autoRotate) { cameraOrbit.theta+=0.004; updateCameraOrbit(); }
-  var t=Date.now()*0.001;
-  nodeMeshes.forEach(function(m,i){ if(m.userData.pulse) m.scale.setScalar(1+0.08*Math.sin(t*2+i)); });
-  renderer.render(scene, camera);
-}
+          // RACKS JAUNE - 72 (Vertical Haut) -> 2 rangées de 12 avec gerbabilité 3
+          { id:'y72_1', type:'jaune72', label:'72', x:48, y:48, w:3.5, h:16, emp:24, gerb:3, cols:2, rows:12 },
+          { id:'y72_2', type:'jaune72', label:'72', x:53, y:48, w:3.5, h:16, emp:24, gerb:3, cols:2, rows:12 },
+          { id:'y72_3', type:'jaune72', label:'72', x:58, y:48, w:3.5, h:16, emp:24, gerb:3, cols:2, rows:12 },
+          { id:'y72_4', type:'jaune72', label:'72', x:63, y:48, w:3.5, h:16, emp:24, gerb:3, cols:2, rows:12 },
 
-function build3DScene() {
-  if (!scene) return;
-  nodeMeshes.forEach(function(m){scene.remove(m);}); nodeMeshes=[];
-  linkLines.forEach(function(l){scene.remove(l);}); linkLines=[];
-  var data=filteredData.slice(0,60);
-  if (!data.length) { document.getElementById('node-count-badge').textContent='Nodes: 0'; return; }
-  var groups={};
-  data.forEach(function(r){ var k=currentView==='SERIE'?r.destination:r.client; if(!groups[k])groups[k]=[]; groups[k].push(r); });
-  var gkeys=Object.keys(groups), n=gkeys.length;
-  var hgeo=new THREE.SphereGeometry(1.5,24,24);
-  var hmat=new THREE.MeshPhongMaterial({color:0x00d4ff,emissive:0x004488,shininess:80});
-  var hmesh=new THREE.Mesh(hgeo,hmat); hmesh.position.set(0,2,0);
-  hmesh.userData={label:'ORIGIN HUB',pulse:true}; scene.add(hmesh); nodeMeshes.push(hmesh);
-  gkeys.forEach(function(key,i){
-    var angle=(i/n)*Math.PI*2, radius=16+(i%3)*5;
-    var x=Math.cos(angle)*radius, z=Math.sin(angle)*radius, y=1;
-    var cnt=groups[key].length, size=0.6+Math.min(cnt/15,1.0);
-    var color=currentView==='SERIE'?0x00ff88:0x9b59ff;
-    var mv=currentView==='SERIE'?Math.max.apply(null,groups[key].map(function(r){return r.stockRem||0;})):
-                                  Math.max.apply(null,groups[key].map(function(r){return r.remorquesFg||0;}));
-    if(mv>5) color=0xff6b35;
-    var geo=new THREE.SphereGeometry(size,16,16);
-    var mat=new THREE.MeshPhongMaterial({color:color,emissive:new THREE.Color(color).multiplyScalar(0.3),shininess:60});
-    var mesh=new THREE.Mesh(geo,mat); mesh.position.set(x,y,z);
-    mesh.userData={label:key,count:cnt,pulse:true}; scene.add(mesh); nodeMeshes.push(mesh);
-    groups[key].slice(0,8).forEach(function(item,j){
-      var ja=(j/Math.max(groups[key].length,1))*Math.PI*2, jr=3.5;
-      var jx=x+Math.cos(ja)*jr, jz=z+Math.sin(ja)*jr, jy=0.5;
-      var jgeo=new THREE.BoxGeometry(0.4,0.4,0.4);
-      var jmat=new THREE.MeshPhongMaterial({color:0xffd700,emissive:0x443300});
-      var jm=new THREE.Mesh(jgeo,jmat); jm.position.set(jx,jy,jz);
-      jm.userData={label:item.description||item.project,item:item}; scene.add(jm); nodeMeshes.push(jm);
-      addLine(new THREE.Vector3(x,y,z), new THREE.Vector3(jx,jy,jz), 0x1e3060);
-    });
-    addLine(new THREE.Vector3(0,2,0), new THREE.Vector3(x,y,z), 0x00d4ff);
-  });
-  document.getElementById('node-count-badge').textContent='Nodes: '+nodeMeshes.length;
-}
+          // RACKS JAUNE - 72 (Vertical Bas)
+          { id:'y72_5', type:'jaune72', label:'72', x:48, y:78, w:3.5, h:16, emp:24, gerb:3, cols:2, rows:12 },
+          { id:'y72_6', type:'jaune72', label:'72', x:53, y:78, w:3.5, h:16, emp:24, gerb:3, cols:2, rows:12 },
+          { id:'y72_7', type:'jaune72', label:'72', x:58, y:78, w:3.5, h:16, emp:24, gerb:3, cols:2, rows:12 },
+          { id:'y72_8', type:'jaune72', label:'72', x:63, y:78, w:3.5, h:16, emp:24, gerb:3, cols:2, rows:12 },
 
-function addLine(from, to, color) {
-  var geo=new THREE.BufferGeometry().setFromPoints([from,to]);
-  var mat=new THREE.LineBasicMaterial({color:color,opacity:0.5,transparent:true});
-  var l=new THREE.Line(geo,mat); scene.add(l); linkLines.push(l);
-}
+          // RACKS TOP CENTER (Blancs) -> Rangs de 14 par exemple
+          { id:'ev',    type:'blanc', label:'EV',          x:40, y:16,   w:28, h:3.5, emp:28, gerb:1, cols:14, rows:2 },
+          { id:'emb',   type:'blanc', label:'Emballage V', x:40, y:20.5, w:28, h:3.5, emp:28, gerb:1, cols:14, rows:2 },
+          { id:'prep1', type:'blanc', label:'Prep FG',     x:40, y:25,   w:28, h:3.5, emp:28, gerb:1, cols:14, rows:2 },
+          { id:'prep2', type:'blanc', label:'Prep FG',     x:40, y:29.5, w:28, h:3.5, emp:28, gerb:1, cols:14, rows:2 },
+          { id:'cjt1',  type:'blanc', label:'CJT',         x:40, y:34,   w:28, h:3.5, emp:28, gerb:1, cols:14, rows:2 },
+          { id:'cjt2',  type:'blanc', label:'CJT',         x:40, y:38.5, w:28, h:3.5, emp:28, gerb:1, cols:14, rows:2 },
 
-function handleHover(ev) {
-  if (!raycaster||!scene||!camera) return;
-  raycaster.setFromCamera(mouse, camera);
-  var hits=raycaster.intersectObjects(nodeMeshes);
-  var tt=document.getElementById('tooltip-3d');
-  if (hits.length>0) {
-    var ud=hits[0].object.userData;
-    var rect=document.getElementById('three-canvas').getBoundingClientRect();
-    tt.style.left=(ev.clientX-rect.left+14)+'px'; tt.style.top=(ev.clientY-rect.top+14)+'px'; tt.style.display='block';
-    if (ud.count!==undefined) {
-      tt.innerHTML='<div class="tt-title">&#x1F4CD; '+escHtml(ud.label)+'</div><div class="tt-row"><span>Items</span><span>'+ud.count+'</span></div>';
-    } else if (ud.item) {
-      var it=ud.item;
-      tt.innerHTML='<div class="tt-title">'+escHtml(ud.label)+'</div>'
-        +(currentView==='SERIE'
-          ?'<div class="tt-row"><span>Stock Pal</span><span>'+(it.stockPal||0)+'</span></div><div class="tt-row"><span>Total Days</span><span>'+(it.totalPlanning||0)+'</span></div>'
-          :'<div class="tt-row"><span>CJT</span><span>'+(it.cjt||0)+'</span></div><div class="tt-row"><span>Pal FG</span><span>'+(it.palletsFg||0)+'</span></div>');
-    } else {
-      tt.innerHTML='<div class="tt-title">&#x1F310; '+escHtml(ud.label||'Hub')+'</div>';
-    }
-  } else { tt.style.display='none'; }
-}
+          // RACKS RIGHT (Cerclage Rouge, FG Rose)
+          { id:'cerclage', type:'rouge', label:'Zone cerclage', x:78, y:32, w:19, h:7, emp:20, gerb:1, cols:10, rows:2 },
+          { id:'fg1', type:'rose', label:'FG', x:78, y:40.5, w:19, h:7, emp:20, gerb:3, cols:10, rows:2 },
+          { id:'fg2', type:'rose', label:'FG', x:78, y:49,   w:19, h:7, emp:20, gerb:3, cols:10, rows:2 },
+          { id:'fg3', type:'rose', label:'FG', x:78, y:57.5, w:19, h:7, emp:20, gerb:3, cols:10, rows:2 },
+          { id:'fg4', type:'rose', label:'FG', x:78, y:66,   w:19, h:7, emp:20, gerb:3, cols:10, rows:2 },
+        ];
 
-function resetCamera() { cameraOrbit.theta=0.4; cameraOrbit.phi=0.45; cameraOrbit.radius=45; updateCameraOrbit(); }
-function toggleAutoRotate() { autoRotate=!autoRotate; }
-function toggleWireframe() { wireframe=!wireframe; nodeMeshes.forEach(function(m){if(m.material)m.material.wireframe=wireframe;}); }
 
-function toggle3D(btn) {
-  show3D=!show3D;
-  document.getElementById('canvas-section').style.display=show3D?'block':'none';
-  document.querySelector('main').style.gridTemplateColumns=show3D?'1fr 340px':'0 1fr';
-  btn.textContent=show3D?'\uD83D\uDD2E 3D Digital Twin':'\uD83D\uDCCB Table Only';
-}
+        const CFG = {
+          'prep':         {css:'zt-prep',     label:'PREP (Camion)', color:'#3b82f6'},
+          'serie':        {css:'zt-serie',    label:'SÉRIE',         color:'#f59e0b'},
+          'mixte':        {css:'zt-mixte',    label:'ZONE MIXTE',    color:'#eab308'},
+          'serie-a':      {css:'zt-serie-a',  label:'ZONE CJT',      color:'#111111'},
+          'afm':          {css:'zt-afm',      label:'AFM',           color:'#f472b6'},
+          'cjt':          {css:'zt-cjt',      label:'CJT AFM',       color:'#f472b6'},
+          'cerclage_dyn': {css:'zt-cerclage', label:'CERCLAGE',      color:'#800e26'},
+        };
 
-function switchView(view, btn) {
-  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
-  btn.classList.add('active'); currentView=view;
-  document.getElementById('view-badge').textContent=view==='SERIE'?'\uD83D\uDCE6 SERIE \u2014 Supply Chain View':'\uD83D\uDE9B AFM \u2014 Finished Goods View';
-  document.getElementById('panel-title').textContent=view==='SERIE'?'SERIE Records':'AFM Records';
-  document.getElementById('search-input').value='';
-  loadData(view);
-}
+        const COLORS = [
+          '#3b82f6','#f59e0b','#8b5cf6','#0ea5e9','#ec4899',
+          '#84cc16','#ef4444','#14b8a6','#a855f7','#e11d48',
+          '#06b6d4','#eab308','#10b981','#6366f1','#f97316',
+        ];
 
-function refreshData() { loadData(currentView); }
+        document.addEventListener("DOMContentLoaded", () => {
+            lucide.createIcons();
+            buildLayout2D('map', PLAN);
+            buildLayout2D('map-future', PLAN_FUTURE);
+            setupTooltipDelegation('map'); 
+            setupTooltipDelegation('map-future'); 
+            fetchData();
+            startAutoRefresh();
+        });
 
-function showError(msg) {
-  var el=document.getElementById('error-banner'); el.textContent='\u26A0 '+msg; el.style.display='block';
-}
+        // ==========================================
+        // DÉLÉGATION D'ÉVÉNEMENTS (PERFORMANCE MASSIVE)
+        // ==========================================
+        function setupTooltipDelegation(mapId) {
+            const mapEl = document.getElementById(mapId);
+            mapEl.addEventListener('mouseover', (e) => {
+                const sl = e.target.closest('.sl.filled, .sl.ov');
+                if (sl && sl.dataset.dtype) {
+                    showTooltip(sl.dataset, e.clientX, e.clientY);
+                }
+            });
+            mapEl.addEventListener('mouseout', (e) => {
+                const sl = e.target.closest('.sl.filled, .sl.ov');
+                if (sl) ttEl.classList.remove('show');
+            });
+            mapEl.addEventListener('mousemove', (e) => {
+                if (ttEl.classList.contains('show')) moveTT(e.clientX, e.clientY);
+            });
+        }
 
-window.addEventListener('load', function(){ initThree(); loadData('SERIE'); });
-</script>
+        function showTooltip(d, clientX, clientY) {
+            const cfg = CFG[d.dtype] || CFG['serie'];
+            const stock = parseInt(d.stock); 
+            const placed = parseInt(d.placed);
+            const zfill = parseInt(d.zfill);
+            const ov = parseInt(d.ov);
+            
+            const barPct = ov > 0 ? 100 : Math.min(100, zfill);
+            const bc  = ov > 0 ? '#ef4444' : zfill >= 90 ? '#f59e0b' : '#22c55e';
+
+            document.getElementById('tt-dest').innerText = d.dest;
+            document.getElementById('tt-dest').style.background = d.color || cfg.color;
+            document.getElementById('tt-dest').style.color = '#fff';
+            
+            const projEl = document.getElementById('tt-proj');
+            projEl.innerText = d.proj;
+            projEl.title = d.proj; // Ajout du tooltip HTML natif si le texte est très long
+            
+            document.getElementById('tt-type').innerText = cfg.label;
+            document.getElementById('tt-zname').innerText = d.zname;
+            
+            document.getElementById('tt-abc').innerText = d.abc || '—';
+            document.getElementById('tt-abc').style.color = d.abc === 'A' ? '#ef4444' : d.abc === 'B' ? '#f59e0b' : '#22c55e';
+            
+            document.getElementById('tt-stock').innerText = stock + ' pal.';
+            document.getElementById('tt-placed').innerText = placed + ' pal.';
+            document.getElementById('tt-gerb').innerText = d.gerb + ' niv.';
+            
+            document.getElementById('tt-pct').innerText = (ov > 0 ? '> 100' : zfill) + '%';
+            document.getElementById('tt-bar').style.width = barPct + '%';
+            document.getElementById('tt-bar').style.background = bc;
+
+            const ovR = document.getElementById('tt-ov-r');
+            ovR.style.display = ov > 0 ? 'flex' : 'none';
+            if(ov > 0) document.getElementById('tt-ov').innerText = ov + ' pal.';
+
+            ttEl.classList.add('show');
+            moveTT(clientX, clientY);
+        }
+
+        function moveTT(x, y){
+          let nx = x + 16, ny = y + 16;
+          if(nx + 250 > window.innerWidth) nx = x - 260;
+          if(ny + 285 > window.innerHeight) ny = y - 295;
+          ttEl.style.left = nx + 'px';
+          ttEl.style.top = ny + 'px';
+        }
+
+        function buildLayout2D(mapId, layoutPlan) {
+          const map = document.getElementById(mapId);
+          // Keep existing SVGs (like AGV paths) inside the map
+          const svgContent = map.innerHTML;
+          map.innerHTML = svgContent;
+
+          layoutPlan.forEach(z => {
+            const el = document.createElement('div');
+            el.id = z.id;
+            el.style.cssText = `left:${z.x}%;top:${z.y}%;width:${z.w}%;height:${z.h}%;position:absolute;`;
+            if (z.type === 'static') {
+              el.className = `zs ${z.cls}`;
+              el.innerHTML = z.label;
+            } else {
+              const cfg = CFG[z.type] || CFG['serie'];
+              el.className = `zr ${cfg.css}`;
+              el.style.gridTemplateColumns = `repeat(${z.cols},minmax(0,1fr))`;
+              el.style.gridTemplateRows    = `repeat(${z.rows},minmax(0,1fr))`;
+              el.style.gridAutoRows        = 'minmax(5px, 1fr)'; 
+            }
+            map.appendChild(el);
+          });
+        }
+
+        function startAutoRefresh() {
+            if(autoRefresh) clearInterval(autoRefresh);
+            autoRefresh = setInterval(fetchData, 60000); 
+        }
+
+        function switchView(view) {
+            if(currentView === view) return;
+            currentView = view;
+            
+            const tabs = ['serie', 'afm', 'standard', 'layout', 'future', '3d', 'references'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                if (btn) {
+                    btn.className = t === view.toLowerCase() ? 
+                        "px-6 py-2 rounded-md bg-white shadow-sm text-blue-600 font-bold text-sm transition-all focus:outline-none" : 
+                        "px-6 py-2 rounded-md text-slate-500 hover:text-slate-700 font-bold text-sm transition-all focus:outline-none";
+                    if (t === 'future' && view.toLowerCase() === 'future') {
+                         btn.classList.add('bg-blue-50/50'); // Special styling for future tab
+                    } else if (t === 'future') {
+                         btn.classList.remove('bg-blue-50/50');
+                    } else if (t === '3d' && view === 'FUTURE_3D') {
+                         btn.className = "px-6 py-2 rounded-md text-white bg-indigo-600 hover:bg-indigo-700 font-bold text-sm transition-all focus:outline-none flex items-center gap-2 shadow-md border border-indigo-700";
+                    } else if (t === '3d') {
+                         btn.className = "px-6 py-2 rounded-md text-indigo-600 hover:bg-indigo-100 font-bold text-sm transition-all focus:outline-none flex items-center gap-2 border border-indigo-100";
+                    }
+                }
+            });
+
+            const containers = {
+                'STANDARD': 'standard-container',
+                'LAYOUT': 'layout-container',
+                'FUTURE': 'future-container',
+                'SERIE': 'data-container',
+                'AFM': 'data-container',
+                'REFERENCES': 'references-container',
+                'FUTURE_3D': 'container-3d'
+            };
+
+            ['standard-container', 'layout-container', 'future-container', 'data-container', 'references-container', 'container-3d', 'kpi-container', 'sub-kpi-container', 'live-status-container'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
+            });
+
+            document.getElementById(containers[view]).classList.remove('hidden');
+
+            if (view === 'SERIE' || view === 'AFM') {
+                document.getElementById('kpi-container').classList.remove('hidden');
+                document.getElementById('sub-kpi-container').classList.remove('hidden');
+                document.getElementById('live-status-container').classList.remove('hidden');
+                document.getElementById('loading-screen').classList.remove('hidden');
+                document.getElementById('main-content').classList.add('opacity-50', 'pointer-events-none');
+                fetchData();
+            } else if (view === 'LAYOUT' || view === 'FUTURE') {
+                document.getElementById('loading-screen').classList.remove('hidden');
+                document.getElementById('main-content').classList.add('opacity-50', 'pointer-events-none');
+                fetchData(); 
+            } else if (view === 'FUTURE_3D') {
+                setTimeout(init3D, 50);
+            }
+        }
+
+        function fetchData() {
+            if (currentView === 'STANDARD' || currentView === 'REFERENCES' || currentView === 'FUTURE_3D') return; 
+
+            if (typeof google !== 'undefined' && google.script) {
+                if (currentView === 'LAYOUT' || currentView === 'FUTURE') {
+                    google.script.run
+                        .withSuccessHandler((serieResponse) => {
+                            google.script.run
+                                .withSuccessHandler((afmResponse) => {
+                                    if (currentView === 'LAYOUT') {
+                                        renderLayoutTwin(serieResponse, afmResponse, PLAN, 'dest-leg', 'k-s', 'k-a', 'k-c');
+                                    } else if (currentView === 'FUTURE') {
+                                        renderLayoutTwin(serieResponse, afmResponse, PLAN_FUTURE, 'dest-leg-future', 'kf-s', 'kf-a', 'kf-c');
+                                    }
+                                })
+                                .withFailureHandler(handleError)
+                                .getShipmentData('AFM');
+                        })
+                        .withFailureHandler(handleError)
+                        .getShipmentData('SERIE');
+                } else {
+                    google.script.run
+                        .withSuccessHandler(renderDashboard)
+                        .withFailureHandler(handleError)
+                        .getShipmentData(currentView);
+                }
+            } else {
+                document.getElementById('loading-screen').innerHTML = `<p class="text-amber-600">Environnement Google Apps Script requis.</p>`;
+            }
+        }
+
+        function handleError(err) {
+            console.error("Erreur: ", err.message);
+            document.getElementById('loading-screen').classList.remove('hidden');
+            document.getElementById('loading-screen').innerHTML = `<div class="bg-red-50 p-6 rounded-xl text-center"><p class="text-red-600 font-bold mb-2">Erreur</p><p class="text-red-500 text-sm">${err.message}</p></div>`;
+        }
+
+        function renderDashboard(response) {
+            const now = new Date();
+            document.getElementById('last-updated-time').innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            document.getElementById('loading-screen').classList.add('hidden');
+            const mainContent = document.getElementById('main-content');
+            mainContent.classList.remove('hidden', 'opacity-50', 'pointer-events-none');
+
+            if(response.type === 'SERIE') renderSerie(response.data);
+            if(response.type === 'AFM') renderAfm(response.data);
+            lucide.createIcons();
+        }
+
+        function renderLayoutTwin(serieRes, afmRes, activePlan, legendId, ksId, kaId, kcId) {
+            const now = new Date();
+            document.getElementById('last-updated-time').innerText = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+            document.getElementById('loading-screen').classList.add('hidden');
+            document.getElementById('main-content').classList.remove('hidden', 'opacity-50', 'pointer-events-none');
+
+            let sData = [];
+            if (serieRes && serieRes.data) {
+                serieRes.data.forEach(d => { if (d.stockPal > 0) sData.push({...d, dtype: 'serie'}); });
+            }
+
+            let aData = [];
+            if (afmRes && afmRes.data) {
+                afmRes.data.forEach(d => {
+                    if (d.palletsFg > 0) aData.push({...d, dtype: 'afm', stockPal: d.palletsFg});
+                    if (d.palletsCjt > 0) aData.push({...d, dtype: 'cjt', stockPal: d.palletsCjt});
+                });
+            }
+            masser(sData, aData, activePlan, legendId, ksId, kaId, kcId);
+        }
+
+        function classifyABC(items) {
+            if (!items || items.length === 0) return [];
+            const prioDest = ['RENAULT', 'STLA', 'KENITRA'];
+
+            const scored = items.map(item => {
+                const j1 = (item.rawDays && item.rawDays[0]) ? item.rawDays[0] : 0;
+                const j2 = (item.rawDays && item.rawDays[1]) ? item.rawDays[1] : 0;
+                let urgencyScore = (item.stockPal || 0) * (1 + j1 * 2 + j2 * 1);
+                
+                const searchStr = ((item.destination || '') + ' ' + (item.project || '')).toUpperCase();
+                if (prioDest.some(d => searchStr.includes(d))) urgencyScore += 1000000; 
+
+                return { ...item, urgencyScore };
+            });
+
+            scored.sort((a, b) => b.urgencyScore - a.urgencyScore);
+            const n = scored.length;
+            return scored.map((item, i) => ({
+                ...item,
+                abc: i < Math.ceil(n / 3) ? 'A' : i < Math.ceil(2 * n / 3) ? 'B' : 'C',
+            }));
+        }
+
+        function consolidateByDestination(items) {
+            const destMap = {};
+            items.forEach(item => {
+                const dest = (item.destination || item.client || '?').trim();
+                const key = dest + '_' + item.dtype;
+                
+                if (!destMap[key]) {
+                    destMap[key] = {
+                        key, destination: dest, dtype: item.dtype,
+                        stockPal: 0, gerb: item.gerb || 3, urgencyScore: 0, abc: 'C',
+                        projects: new Set(),
+                    };
+                }
+                destMap[key].stockPal    += item.stockPal || 0;
+                destMap[key].urgencyScore = Math.max(destMap[key].urgencyScore, item.urgencyScore || 0);
+                
+                if ((item.abc === 'A') || (item.abc === 'B' && destMap[key].abc === 'C')) {
+                    destMap[key].abc = item.abc;
+                }
+                if (item.project) {
+                    destMap[key].projects.add(item.project.replace(/^[-+]\s*/, '').trim());
+                }
+            });
+            
+            // On compile les projets multiples en une chaîne lisible
+            return Object.values(destMap).map(g => ({
+                ...g, project: Array.from(g.projects).join(', ') || '—'
+            })).sort((a, b) => b.stockPal - a.stockPal);
+        }
+
+        function scoreZoneForGroup(zone, group) {
+            let score = zone.proximityScore * 4; 
+            if (zone.freePal <= 0) return -999; 
+            
+            score += zone.freePal >= group.stockPal ? 30 : 30 * (zone.freePal / group.stockPal);
+            const destName = group.destination || '?';
+
+            if (zone.destinations.has(destName)) score += 20; 
+            else {
+                const destCount = zone.destinations.size;
+                if (destCount >= zone.maxDestinations) score -= 50; 
+                else if (destCount >= zone.maxDestinations - 1) score -= 15; 
+            }
+
+            const fillRate = zone.usedPal / zone.capacity;
+            if (fillRate > 0.8) score -= 20; 
+            else if (fillRate > 0.6) score -= 5;  
+
+            if (group.abc === 'A' && zone.proximityScore >= 8) score += 10;
+            if (group.abc === 'C' && zone.proximityScore <= 4) score += 10;
+
+            return score;
+        }
+
+        function escapeHtml(unsafe) {
+            return (unsafe || '').toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        function getSlotHtml(d, isOv) {
+            const ovClass = isOv ? ' sl ov' : ' sl filled';
+            const style = !isOv ? `background-color:${d.color};` : '';
+            return `<div class="${ovClass}" style="${style}" data-dest="${escapeHtml(d.dest)}" data-proj="${escapeHtml(d.proj)}" data-dtype="${d.dtype}" data-stock="${d.stock}" data-abc="${d.abc}" data-placed="${d.placed}" data-emp="${d.emp}" data-gerb="${d.gerb}" data-zname="${escapeHtml(d.zname)}" data-zfill="${d.zfill}" data-ov="${d.ov}" data-color="${d.color}"></div>`;
+        }
+
+        function placeScoredGroups(groups, zoneTiers, Z, cmap) {
+            if (!zoneTiers || zoneTiers.length === 0) return;
+
+            groups.forEach(group => {
+                let remaining = group.stockPal || 0;
+                if (remaining <= 0) return;
+
+                const destName = group.destination || '?';
+                const color = cmap[destName + '_' + group.dtype] || '#3b82f6';
+                const gerb  = group.gerb || 3;
+
+                // L'algo a désormais le droit de parcourir tous les Tiers de sécurité configurés (Bleu -> Jaune -> Rouge par ex)
+                for (const currentTierZones of zoneTiers) {
+                    if (remaining <= 0) break;
+
+                    // On trie les zones du tier actuel par "pertinence logistique"
+                    let rankedZones = currentTierZones
+                        .map(zone => ({ zone, score: scoreZoneForGroup(zone, group) }))
+                        .filter(({ score, zone }) => score > -999 && zone.freePal > 0)
+                        .sort((a, b) => b.score - a.score); 
+
+                    for (const rz of rankedZones) {
+                        if (remaining <= 0) break;
+
+                        const bestZone = rz.zone;
+                        const canPlace = Math.min(remaining, bestZone.freePal);
+                        const slotsNeeded = Math.ceil(canPlace / gerb);
+
+                        bestZone.allocations.push({ item: group, placed: canPlace, gerb, color, isOverflow: false });
+
+                        bestZone.usedPal   += canPlace;
+                        bestZone.freePal   -= canPlace;
+                        bestZone.usedSlots += slotsNeeded;
+                        bestZone.destinations.add(destName);
+                        remaining -= canPlace;
+                    }
+                }
+
+                // S'il reste du stock APRES avoir parcouru toutes les zones autorisées (même les zones de secours de l'autre famille)
+                // -> Débordement Clignotant
+                if (remaining > 0) {
+                    const allAllowedZones = zoneTiers.flat();
+                    let bestOverflow = allAllowedZones.find(z => z.destinations.has(destName));
+                    if (!bestOverflow) bestOverflow = allAllowedZones.sort((a, b) => b.freePal - a.freePal)[0];
+                    if (!bestOverflow) bestOverflow = allAllowedZones[0];
+
+                    if (bestOverflow) {
+                        bestOverflow.allocations.push({ item: group, placed: remaining, gerb, color, isOverflow: true });
+                        bestOverflow.destinations.add(destName);
+                    }
+                }
+            });
+        }
+
+        function renderAllZones(Z) {
+            Object.values(Z).forEach(zone => {
+                const el = document.getElementById(zone.id);
+                if (!el) return;
+
+                let usedEmpForZone = 0;
+                zone.allocations.forEach(a => { if (!a.isOverflow) usedEmpForZone += Math.ceil(a.placed / a.gerb); });
+                let zoneFillPct = Math.round((usedEmpForZone / zone.emp) * 100);
+
+                let ztypeStr = CFG[zone.type] ? CFG[zone.type].label : 'Zone';
+                let cleanLabel = (zone.label || '').replace(/<[^>]*>?/gm, '').trim();
+                let zname = ztypeStr;
+                if (cleanLabel && cleanLabel !== ztypeStr && cleanLabel !== '') zname += ' (' + cleanLabel + ')';
+
+                // Génération HTML ultra-rapide par String
+                let html = `<div class="wcap">${zone.label || (zone.emp * zone.gerb)}</div>`;
+                let empCount = 0;
+
+                zone.allocations.forEach(alloc => {
+                    const itemData = {
+                        dest: alloc.item.destination || alloc.item.client || '—', proj: alloc.item.project || '—',
+                        dtype: alloc.item.dtype || '—', stock: alloc.item.stockPal || 0, abc: alloc.item.abc || '—',
+                        placed: alloc.placed, emp: zone.emp, gerb: alloc.gerb, zname: zname, zfill: zoneFillPct,
+                        ov: alloc.isOverflow ? alloc.placed : 0, color: alloc.color
+                    };
+
+                    if (alloc.isOverflow) {
+                        const ovN = Math.ceil(alloc.placed / alloc.gerb);
+                        for (let i = 0; i < ovN; i++) { html += getSlotHtml(itemData, true); }
+                    } else {
+                        const slotsToFill = Math.ceil(alloc.placed / alloc.gerb);
+                        for (let i = 0; i < slotsToFill && empCount < zone.emp; i++) {
+                            html += getSlotHtml(itemData, false);
+                            empCount++;
+                        }
+                    }
+                });
+
+                while (empCount < zone.emp) { html += '<div class="sl"></div>'; empCount++; }
+                el.innerHTML = html; // Injection Dom unique et propre
+            });
+        }
+
+        function buildColorMap(data) {
+          const map={}; let ci=0;
+          data.forEach(d=>{
+            const k=(d.destination || d.client)+'_'+d.dtype;
+            if(!map[k]) map[k]=COLORS[ci++%COLORS.length];
+          });
+          return map;
+        }
+
+        function buildLegend(cmap, data, legendId) {
+          const bar=document.getElementById(legendId);
+          if(!bar) return;
+          bar.innerHTML='';
+          const seen=new Set();
+          
+          const sortedData = [...data].sort((a,b) => (b.stockPal||0) - (a.stockPal||0));
+          sortedData.forEach(d=>{
+            const dest = d.destination || d.client || '—';
+            const k=dest+'_'+d.dtype;
+            if(seen.has(k)) return;
+            seen.add(k);
+            const color=cmap[k];
+            const div=document.createElement('div');
+            div.className='li';
+            div.innerHTML=`<div class="ld" style="background:${color};border-color:${color};"></div>${dest}`;
+            bar.appendChild(div);
+          });
+        }
+
+        function masser(serieData, afmData, activePlan, legendId, ksId, kaId, kcId) {
+            const ZONE_META = {};
+            activePlan.forEach(z => {
+                let prox = 5; let mD = 50; 
+                if (z.type === 'prep') { prox = 10; }
+                else if (z.type === 'serie') { prox = 7; }
+                else if (z.type === 'mixte') { prox = 5; }
+                else if (z.type === 'afm') { prox = 8; }
+                else if (z.type === 'cjt') { prox = 8; }
+                else if (z.type === 'serie-a') { prox = 4; } 
+                else if (z.type === 'cerclage_dyn') { prox = 9; }
+                ZONE_META[z.id] = { proximityScore: prox, maxDestinations: mD };
+            });
+
+            const Z = {};
+            activePlan.filter(z => z.type !== 'static').forEach(z => {
+                const meta = ZONE_META[z.id];
+                Z[z.id] = {
+                    id: z.id, type: z.type, label: z.label, emp: z.emp, gerb: z.gerb, capacity: z.emp * z.gerb,
+                    usedPal: 0, freePal: z.emp * z.gerb, usedSlots: 0, proximityScore: meta.proximityScore,
+                    maxDestinations: meta.maxDestinations, destinations: new Set(), allocations: []
+                };
+            });
+
+            const cmap = buildColorMap([...serieData, ...afmData]);
+            const serieClassified = classifyABC(serieData);
+
+            const serieGroups  = consolidateByDestination(serieClassified);
+            const afmGroups    = consolidateByDestination(afmData.filter(d => d.dtype === 'afm'));
+            const cjtGroups    = consolidateByDestination(afmData.filter(d => d.dtype === 'cjt'));
+
+            // Ségrégation générique basée sur les préfixes d'ID pour supporter les 2 plans
+            const zPrep        = activePlan.filter(z => z.type === 'prep').map(z => Z[z.id]).filter(Boolean);
+            const zSerieBlue   = activePlan.filter(z => z.type === 'serie').map(z => Z[z.id]).filter(Boolean);
+            const zMixteYellow = activePlan.filter(z => z.type === 'mixte').map(z => Z[z.id]).filter(Boolean);
+            const zAfmRed      = activePlan.filter(z => ['afm', 'cjt', 'serie-a', 'cerclage_dyn'].includes(z.type)).map(z => Z[z.id]).filter(Boolean);
+
+            const serieA = serieGroups.filter(g => g.abc === 'A' || g.abc === 'B');
+            const serieC = serieGroups.filter(g => g.abc === 'C');
+
+            placeScoredGroups(serieA, [[...zPrep, ...zSerieBlue], zMixteYellow, zAfmRed], Z, cmap);
+            placeScoredGroups(serieC, [[...zSerieBlue, ...zPrep], zMixteYellow, zAfmRed], Z, cmap);
+            
+            placeScoredGroups(afmGroups, [zAfmRed, zMixteYellow, zSerieBlue], Z, cmap);
+            placeScoredGroups(cjtGroups, [zAfmRed, zMixteYellow, zSerieBlue], Z, cmap);
+
+            renderAllZones(Z);
+
+            const ts = serieData.reduce((s,d)=>s+(d.stockPal||0),0);
+            const ta = afmData.filter(d=>d.dtype==='afm').reduce((s,d)=>s+(d.stockPal||0),0);
+            const tc = afmData.filter(d=>d.dtype==='cjt').reduce((s,d)=>s+(d.stockPal||0),0);
+            
+            document.getElementById(ksId).innerText = `SÉRIE: ${ts} pal.`;
+            document.getElementById(kaId).innerText = `AFM: ${ta} pal.`;
+            document.getElementById(kcId).innerText = `CJT AFM: ${tc} pal.`;
+
+            buildLegend(cmap, [...serieData, ...afmData], legendId);
+        }
+
+        // ==========================================
+        // GESTION DES CLICS CASCADES DES TABLEAUX
+        // ==========================================
+        window.toggleLevel = function(event, parentId, childLevelClass) {
+            event.stopPropagation();
+            const parentRow = event.currentTarget;
+            const isExpanded = parentRow.classList.contains('row-expanded');
+            if (isExpanded) {
+                parentRow.classList.remove('row-expanded');
+                document.querySelectorAll(`.${parentId}`).forEach(el => { el.classList.add('hidden'); el.classList.remove('row-expanded'); });
+            } else {
+                parentRow.classList.add('row-expanded');
+                document.querySelectorAll(`.${parentId}.${childLevelClass}`).forEach(el => { el.classList.remove('hidden'); });
+            }
+        };
+
+        document.getElementById('expand-all-btn').addEventListener('click', (e) => {
+            let isExpanded = e.target.innerText === 'Tout Réduire';
+            e.target.innerText = isExpanded ? 'Tout Développer' : 'Tout Réduire';
+            if (!isExpanded) {
+                document.querySelectorAll('.group[onclick]').forEach(el => el.classList.add('row-expanded'));
+                document.querySelectorAll('.level-2, .level-3').forEach(el => el.classList.remove('hidden'));
+            } else {
+                document.querySelectorAll('.group[onclick]').forEach(el => el.classList.remove('row-expanded'));
+                document.querySelectorAll('.level-2, .level-3').forEach(el => el.classList.add('hidden'));
+            }
+        });
+
+        // ==========================================
+        // RENDU : SERIE 
+        // ==========================================
+        function renderSerie(rawData) {
+            document.getElementById('kpi-1-label').innerText = 'Besoin (Palettes)';
+            document.getElementById('kpi-2-label').innerText = 'Stock (Palettes)';
+            document.getElementById('kpi-3-label').innerText = 'Stock (Remorques)';
+            document.getElementById('kpi-4-label').innerText = 'Total Planning';
+            document.getElementById('sub-kpi-1-label').innerText = 'Destinations Actives';
+            document.getElementById('sub-kpi-3-label').innerText = 'Top Destination';
+            document.getElementById('table-title').innerText = 'Planning Détaillé 6 Jours (SERIE)';
+            document.getElementById('chart-title').innerText = 'Planning par Destination';
+            document.getElementById('main-table').className = "w-full text-left border-collapse min-w-[1600px]";
+
+            let grandTotal = 0, grandTotalStock = 0, grandTotalStockPal = 0, grandTotalPalette = 0;
+            const destinationMap = {};
+
+            rawData.forEach(item => {
+                item.days = [];
+                item.rawDays.forEach(dayValue => {
+                    let remaining = parseFloat(dayValue.toFixed(2));
+                    let shifts = [0, 0, 0];
+                    if (remaining >= 3) {
+                        let base = Math.floor(remaining / 3);
+                        shifts = [base, base, base];
+                        remaining = parseFloat((remaining - (base * 3)).toFixed(2));
+                    }
+                    let sIdx = 0;
+                    while (remaining >= 0.99 && sIdx < 3) { shifts[sIdx] += 1; remaining = parseFloat((remaining - 1).toFixed(2)); sIdx++; }
+                    if (remaining > 0 && sIdx < 3) shifts[sIdx] += remaining;
+                    else if (remaining > 0) shifts[2] += remaining; 
+                    item.days.push({ s1: shifts[0], s2: shifts[1], s3: shifts[2] });
+                });
+
+                if (!destinationMap[item.destination]) {
+                    destinationMap[item.destination] = { name: item.destination, total: 0, stockRem: 0, stockPal: 0, palette: 0, days: Array(6).fill(0).map(() => ({s1:0,s2:0,s3:0})), projectsMap: {} };
+                }
+                let dest = destinationMap[item.destination];
+                if (!dest.projectsMap[item.project]) {
+                    dest.projectsMap[item.project] = { name: item.project, total: 0, stockRem: 0, stockPal: 0, palette: 0, days: Array(6).fill(0).map(() => ({s1:0,s2:0,s3:0})), descriptions: [] };
+                }
+                let proj = dest.projectsMap[item.project];
+                proj.descriptions.push(item);
+                proj.total += item.totalPlanning; proj.stockRem += item.stockRem; proj.stockPal += item.stockPal; proj.palette += item.palette;
+                for(let i=0; i<6; i++) { proj.days[i].s1 += item.days[i].s1; proj.days[i].s2 += item.days[i].s2; proj.days[i].s3 += item.days[i].s3; }
+                dest.total += item.totalPlanning; dest.stockRem += item.stockRem; dest.stockPal += item.stockPal; dest.palette += item.palette;
+                for(let i=0; i<6; i++) { dest.days[i].s1 += item.days[i].s1; dest.days[i].s2 += item.days[i].s2; dest.days[i].s3 += item.days[i].s3; }
+                grandTotal += item.totalPlanning; grandTotalStock += item.stockRem; grandTotalStockPal += item.stockPal; grandTotalPalette += item.palette;
+            });
+
+            const groupedData = Object.values(destinationMap).sort((a, b) => b.total - a.total);
+            const maxTotal = groupedData.length > 0 ? groupedData[0].total : 1;
+
+            document.getElementById('kpi-1-value').innerText = grandTotalPalette.toFixed(0);
+            document.getElementById('kpi-2-value').innerText = grandTotalStockPal.toFixed(0);
+            document.getElementById('kpi-3-value').innerText = grandTotalStock.toFixed(2);
+            document.getElementById('kpi-4-value').innerText = grandTotal.toFixed(2);
+            document.getElementById('active-destinations').innerText = groupedData.length;
+            document.getElementById('active-projects').innerText = Object.keys(destinationMap).reduce((acc, dest) => acc + Object.keys(destinationMap[dest].projectsMap).length, 0);
+            document.getElementById('top-destination').innerText = groupedData[0] ? groupedData[0].name : '-';
+
+            document.getElementById('table-head').innerHTML = `
+                <tr>
+                    <th rowspan="2" class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50 sticky left-0 z-30 shadow-[1px_0_0_0_#e2e8f0]">Destination / Projet / Description</th>
+                    <th rowspan="2" class="px-4 py-3 text-xs font-semibold text-teal-600 uppercase tracking-wider text-center bg-teal-50/50 border-r border-slate-200 shadow-inner">Stock<br><span class="text-[9px] opacity-75">(Palettes)</span></th>
+                    <th rowspan="2" class="px-4 py-3 text-xs font-semibold text-emerald-600 uppercase tracking-wider text-center bg-emerald-50/50 border-r border-slate-200 shadow-inner">Stock<br><span class="text-[9px] opacity-75">(Remorques)</span></th>
+                    <th colspan="3" class="px-2 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center border-slate-200 border-b border-r bg-slate-50">Lundi</th>
+                    <th colspan="3" class="px-2 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center border-slate-200 border-b border-r bg-slate-50">Mardi</th>
+                    <th colspan="3" class="px-2 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center border-slate-200 border-b border-r bg-slate-50">Mercredi</th>
+                    <th colspan="3" class="px-2 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center border-slate-200 border-b border-r bg-slate-50">Jeudi</th>
+                    <th colspan="3" class="px-2 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center border-slate-200 border-b border-r bg-slate-50">Vendredi</th>
+                    <th colspan="3" class="px-2 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center border-slate-200 border-b bg-slate-50">Samedi</th>
+                    <th rowspan="2" class="px-4 py-3 text-xs font-semibold text-indigo-600 uppercase tracking-wider text-center bg-indigo-50/50 border-l border-r border-slate-200 shadow-inner">Besoin<br><span class="text-[9px] opacity-75">(Palettes)</span></th>
+                    <th rowspan="2" class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider w-1/12 bg-slate-50">Part Planning</th>
+                </tr>
+                <tr>
+                    ${Array(6).fill(`<th class="px-1 py-1 text-[10px] text-slate-400 font-medium text-center bg-slate-50">S1</th><th class="px-1 py-1 text-[10px] text-slate-400 font-medium text-center bg-slate-50">S2</th><th class="px-1 py-1 text-[10px] text-slate-400 font-medium text-center bg-slate-50 border-r border-slate-200">S3</th>`).join('')}
+                </tr>
+            `;
+
+            let html = '';
+            groupedData.forEach((dest, destIndex) => {
+                const percentage = grandTotal > 0 ? ((dest.total / grandTotal) * 100).toFixed(1) : 0;
+                const barWidth = maxTotal > 0 ? ((dest.total / maxTotal) * 100).toFixed(1) : 0;
+                let destDaysHtml = '';
+                dest.days.forEach((day, idx) => {
+                    destDaysHtml += `<td class="px-2 py-4 text-center text-xs ${day.s1>0?'text-slate-800 font-semibold':'text-slate-300'} border-l border-slate-100">${day.s1>0?day.s1.toFixed(2):'-'}</td><td class="px-2 py-4 text-center text-xs ${day.s2>0?'text-slate-800 font-semibold':'text-slate-300'}">${day.s2>0?day.s2.toFixed(2):'-'}</td><td class="px-2 py-4 text-center text-xs ${day.s3>0?'text-slate-800 font-semibold':'text-slate-300'} ${idx<5?'border-r border-slate-200':''}">${day.s3>0?day.s3.toFixed(2):'-'}</td>`;
+                });
+                html += `<tr class="group cursor-pointer hover:bg-slate-100 transition-colors bg-white level-1" onclick="toggleLevel(event, 'dest-${destIndex}', 'level-2')"><td class="px-5 py-4 font-medium flex items-center gap-2 text-slate-900 bg-white sticky left-0 z-10 group-hover:bg-slate-100 shadow-[1px_0_0_0_#f1f5f9]"><i data-lucide="chevron-right" class="w-4 h-4 chevron text-slate-400"></i>${dest.name}</td><td class="px-4 py-4 text-center font-bold ${dest.stockPal>0?'text-teal-600':'text-slate-300'} bg-teal-50/20 border-r border-slate-100">${dest.stockPal>0?dest.stockPal.toFixed(0):'-'}</td><td class="px-4 py-4 text-center font-bold ${dest.stockRem>0?'text-emerald-600':'text-slate-300'} bg-emerald-50/20 border-r border-slate-100">${dest.stockRem>0?dest.stockRem.toFixed(2):'-'}</td>${destDaysHtml}<td class="px-4 py-4 text-center font-bold ${dest.palette>0?'text-indigo-600':'text-slate-300'} bg-indigo-50/20 border-l border-r border-slate-100">${dest.palette>0?dest.palette.toFixed(0):'-'}</td><td class="px-5 py-4 border-slate-100"><div class="flex items-center gap-2"><div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden"><div class="bg-blue-500 h-2 rounded-full" style="width:${barWidth}%"></div></div><span class="text-xs text-slate-500 w-8 text-right">${percentage}%</span></div></td></tr>`;
+                Object.values(dest.projectsMap).forEach((proj, pIdx) => {
+                    let projDaysHtml = '';
+                    proj.days.forEach((day, idx) => {
+                        projDaysHtml += `<td class="px-2 py-3 text-center text-[11px] ${day.s1>0?'text-slate-700 font-medium':'text-slate-300'} border-l border-slate-200/50">${day.s1>0?day.s1.toFixed(2):'-'}</td><td class="px-2 py-3 text-center text-[11px] ${day.s2>0?'text-slate-700 font-medium':'text-slate-300'}">${day.s2>0?day.s2.toFixed(2):'-'}</td><td class="px-2 py-3 text-center text-[11px] ${day.s3>0?'text-slate-700 font-medium':'text-slate-300'} ${idx<5?'border-r border-slate-200':''}">${day.s3>0?day.s3.toFixed(2):'-'}</td>`;
+                    });
+                    html += `<tr class="dest-${destIndex} level-2 hidden group cursor-pointer bg-slate-50/80 hover:bg-slate-100/80 transition-colors" onclick="toggleLevel(event, 'dest-proj-${destIndex}-${pIdx}', 'level-3')"><td class="px-5 py-3 pl-10 text-sm font-semibold text-slate-700 flex items-center gap-2 bg-slate-50/80 sticky left-0 shadow-[1px_0_0_0_#f1f5f9]"><i data-lucide="chevron-right" class="w-4 h-4 chevron text-slate-400"></i>${proj.name}</td><td class="px-4 py-3 text-center text-sm font-semibold ${proj.stockPal>0?'text-teal-600':'text-slate-300'} bg-teal-50/20 border-r border-slate-100">${proj.stockPal>0?proj.stockPal.toFixed(0):'-'}</td><td class="px-4 py-3 text-center text-sm font-semibold ${proj.stockRem>0?'text-emerald-600':'text-slate-300'} bg-emerald-50/20 border-r border-slate-100">${proj.stockRem>0?proj.stockRem.toFixed(2):'-'}</td>${projDaysHtml}<td class="px-4 py-3 text-center text-sm font-semibold ${proj.palette>0?'text-indigo-600':'text-slate-300'} bg-indigo-50/20 border-l border-r border-slate-100">${proj.palette>0?proj.palette.toFixed(0):'-'}</td><td class="px-5 py-3 border-slate-200/50"></td></tr>`;
+                    proj.descriptions.forEach((desc, dIdx) => {
+                        let descDaysHtml = '';
+                        desc.days.forEach((day, idx) => {
+                            descDaysHtml += `<td class="px-2 py-2 text-center text-[10px] ${day.s1>0?'text-slate-600 font-medium':'text-slate-300'} border-l border-slate-200/50">${day.s1>0?day.s1.toFixed(2):'-'}</td><td class="px-2 py-2 text-center text-[10px] ${day.s2>0?'text-slate-600 font-medium':'text-slate-300'}">${day.s2>0?day.s2.toFixed(2):'-'}</td><td class="px-2 py-2 text-center text-[10px] ${day.s3>0?'text-slate-600 font-medium':'text-slate-300'} ${idx<5?'border-r border-slate-200':''}">${day.s3>0?day.s3.toFixed(2):'-'}</td>`;
+                        });
+                        html += `<tr class="dest-${destIndex} dest-proj-${destIndex}-${pIdx} level-3 hidden bg-white hover:bg-slate-50 transition-colors"><td class="px-5 py-2 pl-16 text-xs font-medium text-slate-500 flex items-center gap-2 bg-white sticky left-0 shadow-[1px_0_0_0_#f1f5f9]"><div class="w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0"></div><span class="truncate max-w-[250px] inline-block align-middle" title="${desc.description}">${desc.description || '-'}</span></td><td class="px-4 py-2 text-center text-xs ${desc.stockPal>0?'text-teal-600 font-semibold':'text-slate-300'} border-r border-slate-100">${desc.stockPal>0?desc.stockPal.toFixed(0):'-'}</td><td class="px-4 py-2 text-center text-xs ${desc.stockRem>0?'text-emerald-600 font-semibold':'text-slate-300'} border-r border-slate-100">${desc.stockRem>0?desc.stockRem.toFixed(2):'-'}</td>${descDaysHtml}<td class="px-4 py-2 text-center text-xs ${desc.palette>0?'text-indigo-600 font-semibold':'text-slate-300'} border-l border-r border-slate-100">${desc.palette>0?desc.palette.toFixed(0):'-'}</td><td class="px-5 py-2 border-slate-200/50"></td></tr>`;
+                    });
+                });
+            });
+            document.getElementById('table-body').innerHTML = html;
+            renderChart(groupedData.filter(d => d.total>0||d.stockRem>0), 'total', 'Remorques Planifiées');
+        }
+
+        // ==========================================
+        // RENDU : AFM
+        // ==========================================
+        function renderAfm(rawData) {
+            document.getElementById('kpi-1-label').innerText = 'Besoin Palettes FG';
+            document.getElementById('kpi-2-label').innerText = 'Total CJT';
+            document.getElementById('kpi-3-label').innerText = 'Remorques FG';
+            document.getElementById('kpi-4-label').innerText = 'Demande Rem. FG';
+            document.getElementById('sub-kpi-1-label').innerText = 'Clients Actifs';
+            document.getElementById('sub-kpi-3-label').innerText = 'Top Client';
+            document.getElementById('table-title').innerText = 'Inventaire & Besoins Détaillés (AFM)';
+            document.getElementById('chart-title').innerText = 'Demande en Remorque FG par Client';
+            document.getElementById('main-table').className = "w-full text-left border-collapse min-w-full";
+
+            let grandBesoin = 0, grandCjt = 0, grandRemFg = 0, grandDemandeRem = 0;
+            const clientMap = {};
+
+            rawData.forEach(item => {
+                if (!clientMap[item.client]) { clientMap[item.client] = { name: item.client, cjt: 0, palletsCjt: 0, palletsFg: 0, remorquesFg: 0, besoinPalFg: 0, demandeRemFg: 0, projectsMap: {} }; }
+                let cli = clientMap[item.client];
+                if (!cli.projectsMap[item.project]) { cli.projectsMap[item.project] = { name: item.project, cjt: 0, palletsCjt: 0, palletsFg: 0, remorquesFg: 0, besoinPalFg: 0, demandeRemFg: 0, descriptions: [] }; }
+                let proj = cli.projectsMap[item.project];
+                proj.descriptions.push(item);
+                proj.cjt += item.cjt; proj.palletsCjt += item.palletsCjt; proj.palletsFg += item.palletsFg; proj.remorquesFg += item.remorquesFg; proj.besoinPalFg += item.besoinPalFg; proj.demandeRemFg += item.demandeRemFg;
+                cli.cjt += item.cjt; cli.palletsCjt += item.palletsCjt; cli.palletsFg += item.palletsFg; cli.remorquesFg += item.remorquesFg; cli.besoinPalFg += item.besoinPalFg; cli.demandeRemFg += item.demandeRemFg;
+                grandBesoin += item.besoinPalFg; grandCjt += item.cjt; grandRemFg += item.remorquesFg; grandDemandeRem += item.demandeRemFg;
+            });
+
+            const groupedData = Object.values(clientMap).sort((a, b) => b.demandeRemFg - a.demandeRemFg);
+            const maxTotal = groupedData.length > 0 ? groupedData[0].demandeRemFg : 1;
+
+            document.getElementById('kpi-1-value').innerText = grandBesoin.toFixed(0);
+            document.getElementById('kpi-2-value').innerText = grandCjt.toFixed(0);
+            document.getElementById('kpi-3-value').innerText = grandRemFg.toFixed(2);
+            document.getElementById('kpi-4-value').innerText = grandDemandeRem.toFixed(2);
+            document.getElementById('active-destinations').innerText = groupedData.length;
+            document.getElementById('active-projects').innerText = Object.keys(clientMap).reduce((acc, cli) => acc + Object.keys(clientMap[cli].projectsMap).length, 0);
+            document.getElementById('top-destination').innerText = groupedData[0] ? groupedData[0].name : '-';
+
+            document.getElementById('table-head').innerHTML = `<tr><th class="px-5 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50 sticky left-0 z-30 shadow-[1px_0_0_0_#e2e8f0]">Client / Projet / Description</th><th class="px-3 py-4 text-[10px] font-semibold text-orange-600 uppercase tracking-wider text-center bg-orange-50 border-r border-slate-200">CJT</th><th class="px-3 py-4 text-[10px] font-semibold text-teal-600 uppercase tracking-wider text-center bg-teal-50 border-r border-slate-200">Pallets CJT</th><th class="px-3 py-4 text-[10px] font-semibold text-cyan-600 uppercase tracking-wider text-center bg-cyan-50 border-r border-slate-200">Pallets FG</th><th class="px-3 py-4 text-[10px] font-semibold text-emerald-600 uppercase tracking-wider text-center bg-emerald-50 border-r border-slate-200">Remorques FG</th><th class="px-3 py-4 text-[10px] font-semibold text-indigo-600 uppercase tracking-wider text-center bg-indigo-50 border-r border-slate-200">Besoin en Palette FG</th><th class="px-3 py-4 text-[10px] font-semibold text-blue-600 uppercase tracking-wider text-center bg-blue-50 border-r border-slate-200">Demande Remorque FG</th><th class="px-5 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider w-1/6 bg-slate-50">Part Demande</th></tr>`;
+
+            let html = '';
+            groupedData.forEach((cli, idx) => {
+                const percentage = grandDemandeRem > 0 ? ((cli.demandeRemFg / grandDemandeRem) * 100).toFixed(1) : 0;
+                const barWidth = maxTotal > 0 ? ((cli.demandeRemFg / maxTotal) * 100).toFixed(1) : 0;
+                html += `<tr class="group cursor-pointer hover:bg-slate-100 transition-colors bg-white level-1" onclick="toggleLevel(event, 'afm-cli-${idx}', 'level-2')"><td class="px-5 py-4 font-medium flex items-center gap-2 text-slate-900 bg-white sticky left-0 z-10 group-hover:bg-slate-100 shadow-[1px_0_0_0_#f1f5f9]"><i data-lucide="chevron-right" class="w-4 h-4 chevron text-slate-400"></i>${cli.name}</td><td class="px-3 py-4 text-center font-bold ${cli.cjt>0?'text-orange-600':'text-slate-300'} border-r border-slate-100">${cli.cjt>0?cli.cjt.toFixed(0):'-'}</td><td class="px-3 py-4 text-center font-bold ${cli.palletsCjt>0?'text-teal-600':'text-slate-300'} border-r border-slate-100">${cli.palletsCjt>0?cli.palletsCjt.toFixed(0):'-'}</td><td class="px-3 py-4 text-center font-bold ${cli.palletsFg>0?'text-cyan-600':'text-slate-300'} border-r border-slate-100">${cli.palletsFg>0?cli.palletsFg.toFixed(0):'-'}</td><td class="px-3 py-4 text-center font-bold ${cli.remorquesFg>0?'text-emerald-600':'text-slate-300'} border-r border-slate-100">${cli.remorquesFg>0?cli.remorquesFg.toFixed(2):'-'}</td><td class="px-3 py-4 text-center font-bold ${cli.besoinPalFg>0?'text-indigo-600':'text-slate-300'} border-r border-slate-100">${cli.besoinPalFg>0?cli.besoinPalFg.toFixed(0):'-'}</td><td class="px-3 py-4 text-center font-bold ${cli.demandeRemFg>0?'text-blue-600':'text-slate-300'} border-r border-slate-100">${cli.demandeRemFg>0?cli.demandeRemFg.toFixed(2):'-'}</td><td class="px-5 py-4 border-slate-100"><div class="flex items-center gap-2"><div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden"><div class="bg-blue-500 h-2 rounded-full" style="width:${barWidth}%"></div></div><span class="text-xs text-slate-500 w-8 text-right">${percentage}%</span></div></td></tr>`;
+                Object.values(cli.projectsMap).forEach((proj, pIdx) => {
+                    html += `<tr class="afm-cli-${idx} level-2 hidden group cursor-pointer bg-slate-50/80 hover:bg-slate-100/80 transition-colors" onclick="toggleLevel(event, 'afm-proj-${idx}-${pIdx}', 'level-3')"><td class="px-5 py-3 pl-10 text-sm font-semibold text-slate-700 flex items-center gap-2 bg-slate-50/80 sticky left-0 shadow-[1px_0_0_0_#f1f5f9]"><i data-lucide="chevron-right" class="w-4 h-4 chevron text-slate-400"></i>${proj.name}</td><td class="px-3 py-3 text-center text-sm font-semibold ${proj.cjt>0?'text-orange-600':'text-slate-300'} border-r border-slate-100">${proj.cjt>0?proj.cjt.toFixed(0):'-'}</td><td class="px-3 py-3 text-center text-sm font-semibold ${proj.palletsCjt>0?'text-teal-600':'text-slate-300'} border-r border-slate-100">${proj.palletsCjt>0?proj.palletsCjt.toFixed(0):'-'}</td><td class="px-3 py-3 text-center text-sm font-semibold ${proj.palletsFg>0?'text-cyan-600':'text-slate-300'} border-r border-slate-100">${proj.palletsFg>0?proj.palletsFg.toFixed(0):'-'}</td><td class="px-3 py-3 text-center text-sm font-semibold ${proj.remorquesFg>0?'text-emerald-600':'text-slate-300'} border-r border-slate-100">${proj.remorquesFg>0?proj.remorquesFg.toFixed(2):'-'}</td><td class="px-3 py-3 text-center text-sm font-semibold ${proj.besoinPalFg>0?'text-indigo-600':'text-slate-300'} border-r border-slate-100">${proj.besoinPalFg>0?proj.besoinPalFg.toFixed(0):'-'}</td><td class="px-3 py-3 text-center text-sm font-semibold ${proj.demandeRemFg>0?'text-blue-600':'text-slate-300'} border-r border-slate-100">${proj.demandeRemFg>0?proj.demandeRemFg.toFixed(2):'-'}</td><td class="px-5 py-3 border-slate-200/50"></td></tr>`;
+                    proj.descriptions.forEach((desc, dIdx) => {
+                        html += `<tr class="afm-cli-${idx} afm-proj-${idx}-${pIdx} level-3 hidden bg-white hover:bg-slate-50 transition-colors"><td class="px-5 py-2 pl-16 text-xs font-medium text-slate-500 flex items-center gap-2 bg-white sticky left-0 shadow-[1px_0_0_0_#f1f5f9]"><div class="w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0"></div><span class="truncate max-w-[250px] inline-block align-middle" title="${desc.description}">${desc.description || '-'}</span></td><td class="px-3 py-2 text-center text-xs ${desc.cjt>0?'text-orange-600 font-semibold':'text-slate-300'} border-r border-slate-100">${desc.cjt>0?desc.cjt.toFixed(0):'-'}</td><td class="px-3 py-2 text-center text-xs ${desc.palletsCjt>0?'text-teal-600 font-semibold':'text-slate-300'} border-r border-slate-100">${desc.palletsCjt>0?desc.palletsCjt.toFixed(0):'-'}</td><td class="px-3 py-2 text-center text-xs ${desc.palletsFg>0?'text-cyan-600 font-semibold':'text-slate-300'} border-r border-slate-100">${desc.palletsFg>0?desc.palletsFg.toFixed(0):'-'}</td><td class="px-3 py-2 text-center text-xs ${desc.remorquesFg>0?'text-emerald-600 font-semibold':'text-slate-300'} border-r border-slate-100">${desc.remorquesFg>0?desc.remorquesFg.toFixed(2):'-'}</td><td class="px-3 py-2 text-center text-xs ${desc.besoinPalFg>0?'text-indigo-600 font-semibold':'text-slate-300'} border-r border-slate-100">${desc.besoinPalFg>0?desc.besoinPalFg.toFixed(0):'-'}</td><td class="px-3 py-2 text-center text-xs ${desc.demandeRemFg>0?'text-blue-600 font-semibold':'text-slate-300'} border-r border-slate-100">${desc.demandeRemFg>0?desc.demandeRemFg.toFixed(2):'-'}</td><td class="px-5 py-2 border-slate-200/50"></td></tr>`;
+                    });
+                });
+            });
+            document.getElementById('table-body').innerHTML = html;
+            renderChart(groupedData, 'demandeRemFg', 'Demande Remorque FG');
+        }
+
+        function renderChart(activeData, dataKey, labelString) {
+            if (myChart) myChart.destroy(); 
+            const ctx = document.getElementById('destinationChart').getContext('2d');
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: activeData.map(d => d.name),
+                    datasets: [{
+                        label: labelString,
+                        data: activeData.map(d => d[dataKey]),
+                        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                        borderRadius: 6,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false }, tooltip: { backgroundColor: 'rgba(15, 23, 42, 0.9)', padding: 12, titleFont: { size: 13 }, bodyFont: { size: 14 } } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#f1f5f9', drawBorder: false }, border: { display: false } },
+                        x: { grid: { display: false }, border: { display: false }, ticks: { maxRotation: 45, minRotation: 45 } }
+                    }
+                }
+            });
+        }
+        
+        // ==========================================
+        // MOTEUR 3D HAUTE PERFORMANCE (THREE.JS)
+        // ==========================================
+        let scene3D, camera3D, renderer3D, controls3D;
+        let is3DInitialized = false;
+        let animationId;
+
+        // Paramètres globaux
+        const W_3D = 400; 
+        const D_3D = 216; 
+        const WALL_H = 30; 
+
+        // Mapping Couleurs 3D
+        const C_3D = {
+            'wood':  0xd2b48c, 
+            'rackB': 0xf97316, 
+            'rackU': 0x1e3a8a, 
+            'bleu26': 0x0ea5e9,
+            'jaune72': 0xfde047,
+            'blanc': 0xf8fafc,
+            'rouge': 0x9f1239,
+            'rose': 0xdb2777
+        };
+
+        let iBox, iPallet, iUpright, iBeam;
+        let boxCount = 0, palletCount = 0, uprightCount = 0, beamCount = 0;
+        
+        const dummy = new THREE.Object3D();
+        const colorObj = new THREE.Color();
+        const clock = new THREE.Clock();
+
+        function init3D() {
+            if (is3DInitialized) return;
+            const container = document.getElementById('map-3d');
+            const width = container.clientWidth || window.innerWidth;
+            const height = container.clientHeight || 800;
+
+            scene3D = new THREE.Scene();
+            scene3D.background = new THREE.Color(0x0f172a);
+            scene3D.fog = new THREE.FogExp2(0x0f172a, 0.002);
+
+            camera3D = new THREE.PerspectiveCamera(45, width / height, 1, 1500);
+            camera3D.position.set(0, 220, 280);
+
+            renderer3D = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer3D.setSize(width, height);
+            renderer3D.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer3D.shadowMap.enabled = true;
+            renderer3D.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer3D.domElement);
+
+            controls3D = new THREE.OrbitControls(camera3D, renderer3D.domElement);
+            controls3D.enableDamping = true;
+            controls3D.dampingFactor = 0.05;
+            controls3D.maxPolarAngle = Math.PI / 2 - 0.05; 
+            controls3D.maxDistance = 600;
+
+            const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444455, 0.6);
+            hemiLight.position.set(0, 100, 0);
+            scene3D.add(hemiLight);
+
+            const dirLight = new THREE.DirectionalLight(0xfff5e6, 0.8);
+            dirLight.position.set(100, 200, 50);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 2048;
+            dirLight.shadow.mapSize.height = 2048;
+            const d = 250;
+            dirLight.shadow.camera.left = -d; dirLight.shadow.camera.right = d;
+            dirLight.shadow.camera.top = d; dirLight.shadow.camera.bottom = -d;
+            scene3D.add(dirLight);
+
+            // Lumières d'ambiance
+            for(let x = -W_3D/2 + 50; x < W_3D/2; x += 100) {
+                for(let z = -D_3D/2 + 50; z < D_3D/2; z += 100) {
+                    const pl = new THREE.PointLight(0xffffff, 0.2, 150);
+                    pl.position.set(x, WALL_H, z); scene3D.add(pl);
+                }
+            }
+
+            buildWarehouseShell3D();
+            precalcInstances3D();
+            generateLayout3D();
+            buildSpecificModels3D();
+            buildLegend3D();
+
+            window.addEventListener('resize', onWindowResize3D);
+
+            setTimeout(() => {
+                document.getElementById('loader-3d').style.opacity = '0';
+                setTimeout(() => document.getElementById('loader-3d').style.display = 'none', 500);
+            }, 600);
+
+            is3DInitialized = true;
+            animate3D();
+        }
+
+        function buildWarehouseShell3D() {
+            // Sol de base
+            const floorGeo = new THREE.PlaneGeometry(W_3D, D_3D);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.8 }); 
+            const floor = new THREE.Mesh(floorGeo, floorMat);
+            floor.rotation.x = -Math.PI / 2;
+            floor.receiveShadow = true;
+            scene3D.add(floor);
+
+            // Murs
+            const wallMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.9 });
+            const w1 = new THREE.Mesh(new THREE.BoxGeometry(W_3D, WALL_H, 2), wallMat); w1.position.set(0, WALL_H/2, -D_3D/2); scene3D.add(w1);
+            const w2 = new THREE.Mesh(new THREE.BoxGeometry(W_3D, WALL_H, 2), wallMat); w2.position.set(0, WALL_H/2, D_3D/2); scene3D.add(w2);
+            const w3 = new THREE.Mesh(new THREE.BoxGeometry(2, WALL_H, D_3D), wallMat); w3.position.set(-W_3D/2, WALL_H/2, 0); scene3D.add(w3);
+            const w4 = new THREE.Mesh(new THREE.BoxGeometry(2, WALL_H, D_3D), wallMat); w4.position.set(W_3D/2, WALL_H/2, 0); scene3D.add(w4);
+
+            // Marquages au Sol pour TOUTES les zones STATIQUES de PLAN_3D
+            PLAN_3D.filter(z => z.type === 'static').forEach(z => {
+                const w = (z.w / 100) * W_3D;
+                const h = (z.h / 100) * D_3D;
+                const x = (z.x / 100) * W_3D - W_3D/2 + w/2;
+                const z3D = (z.y / 100) * D_3D - D_3D/2 + h/2;
+
+                let floorColor = null; let labelY = 3; let tColor = '#ffffff';
+
+                if (z.id === 'camion' || z.id === 'bureau') {
+                    floorColor = 0xf1c40f; labelY = 14; tColor = '#000000';
+                    if(z.id === 'camion') {
+                        const lineMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+                        for(let i = 0; i < 9; i++) {
+                            const line = new THREE.Mesh(new THREE.PlaneGeometry(0.5, h * 0.4), lineMat);
+                            line.rotation.x = -Math.PI/2; line.position.set(x - w/2 + 8 + i*14, 0.15, z3D + h*0.2); scene3D.add(line);
+                        }
+                    }
+                } else if (z.id === 'forklift') {
+                    floorColor = 0x008000; labelY = 6;
+                } else if (z.id === 'kardex' || z.id === 'agv' || z.id === 'debort') {
+                    floorColor = 0xffffff; tColor = '#000000'; labelY = 8;
+                    if(z.id==='debort') labelY=2;
+                } else if (z.id.startsWith('q')) {
+                    floorColor = 0xd1d5db; labelY = 10; tColor = '#000000';
+                }
+
+                if (floorColor !== null) {
+                    const mat = new THREE.MeshStandardMaterial({ color: floorColor, roughness: 0.9 });
+                    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+                    mesh.rotation.x = -Math.PI / 2; mesh.position.set(x, 0.1, z3D); mesh.receiveShadow = true;
+                    scene3D.add(mesh);
+                }
+
+                if(z.label) createTextSprite(z.label, x, labelY, z3D, Math.max(14, w * 0.4), tColor);
+            });
+        }
+
+        function createTextSprite(text, x, y, z, scale = 15, tColor = '#ffffff') {
+            const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
+            canvas.width = 512; canvas.height = 128;
+            
+            ctx.fillStyle = tColor === '#000000' ? 'rgba(255,255,255,0.85)' : 'rgba(15, 23, 42, 0.85)'; 
+            ctx.strokeStyle = tColor === '#000000' ? 'rgba(0,0,0,0.8)' : 'rgba(56, 189, 248, 0.8)'; 
+            ctx.lineWidth = 6;
+
+            const radius = 16; ctx.beginPath();
+            ctx.moveTo(radius, 0); ctx.lineTo(canvas.width - radius, 0); ctx.quadraticCurveTo(canvas.width, 0, canvas.width, radius);
+            ctx.lineTo(canvas.width, canvas.height - radius); ctx.quadraticCurveTo(canvas.width, canvas.height, canvas.width - radius, canvas.height);
+            ctx.lineTo(radius, canvas.height); ctx.quadraticCurveTo(0, canvas.height, 0, canvas.height - radius);
+            ctx.lineTo(0, radius); ctx.quadraticCurveTo(0, 0, radius, 0); ctx.closePath();
+            ctx.fill(); ctx.stroke();
+            
+            ctx.fillStyle = tColor; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            
+            const lines = text.split(/<br\s*\/?>/i);
+            if (lines.length === 1) {
+                ctx.font = 'bold 36px "IBM Plex Sans", sans-serif';
+                ctx.fillText(lines[0].replace(/<[^>]*>?/gm, '').trim(), canvas.width/2, canvas.height/2);
+            } else {
+                ctx.font = 'bold 30px "IBM Plex Sans", sans-serif';
+                ctx.fillText(lines[0].replace(/<[^>]*>?/gm, '').trim(), canvas.width/2, canvas.height/2 - 16);
+                ctx.font = 'normal 24px "IBM Plex Sans", sans-serif';
+                ctx.fillText(lines[1].replace(/<[^>]*>?/gm, '').trim(), canvas.width/2, canvas.height/2 + 20);
+            }
+            
+            const texture = new THREE.CanvasTexture(canvas); texture.minFilter = THREE.LinearFilter;
+            const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
+            const sprite = new THREE.Sprite(spriteMat);
+            sprite.position.set(x, y, z); sprite.scale.set(scale, scale/4, 1);
+            scene3D.add(sprite);
+        }
+
+        function precalcInstances3D() {
+            let maxBoxes = 0, maxUprights = 0, maxBeams = 0; let totalZones = 0;
+            PLAN_3D.forEach(z => {
+                if(z.type !== 'static') {
+                    totalZones++;
+                    maxBoxes += z.cols * z.rows * z.gerb;
+                    maxUprights += (z.cols + 1) * (z.rows + 1);
+                    maxBeams += z.cols * (z.gerb + 1) * 2 * z.rows; 
+                }
+            });
+            document.getElementById('stat-racks').innerText = totalZones;
+            
+            iBox = new THREE.InstancedMesh(new THREE.BoxGeometry(2.8, 2.8, 2.8), new THREE.MeshStandardMaterial({ roughness: 0.7 }), maxBoxes);
+            iBox.castShadow = true; scene3D.add(iBox);
+
+            iPallet = new THREE.InstancedMesh(new THREE.BoxGeometry(3.2, 0.4, 3.2), new THREE.MeshStandardMaterial({ color: C_3D.wood, roughness: 0.9 }), maxBoxes);
+            iPallet.castShadow = true; scene3D.add(iPallet);
+
+            iUpright = new THREE.InstancedMesh(new THREE.BoxGeometry(0.4, 15, 0.4), new THREE.MeshStandardMaterial({ color: C_3D.rackU, roughness: 0.5, metalness: 0.5 }), maxUprights);
+            iUpright.castShadow = true; scene3D.add(iUpright);
+
+            iBeam = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 0.3, 0.2), new THREE.MeshStandardMaterial({ color: C_3D.rackB, roughness: 0.4 }), maxBeams);
+            iBeam.castShadow = true; scene3D.add(iBeam);
+        }
+
+        function generateLayout3D() {
+            boxCount = 0; palletCount = 0; uprightCount = 0; beamCount = 0;
+
+            PLAN_3D.forEach(z => {
+                if (z.type === 'static') return;
+
+                const width3D = (z.w / 100) * W_3D;
+                const depth3D = (z.h / 100) * D_3D;
+                const x3D = (z.x / 100) * W_3D - W_3D/2 + width3D/2;
+                const z3D = (z.y / 100) * D_3D - D_3D/2 + depth3D/2;
+
+                const cellW = width3D / z.cols;
+                const cellD = depth3D / z.rows;
+                const levelH = 4.2; 
+                const baseColorHex = C_3D[z.type] || 0xffffff;
+
+                const pW = cellW * 0.85; 
+                const pD = cellD * 0.85; 
+
+                for (let r = 0; r < z.rows; r++) {
+                    const rowZ = (z3D - depth3D/2) + (r * cellD) + cellD/2;
+
+                    for (let c = 0; c < z.cols; c++) {
+                        const colX = (x3D - width3D/2) + (c * cellW) + cellW/2;
+                        const isLastCol = (c === z.cols - 1);
+                        
+                        // Montants Racks
+                        setInstance(iUpright, uprightCount++, colX - cellW/2, levelH*1.5, rowZ - cellD*0.4);
+                        setInstance(iUpright, uprightCount++, colX - cellW/2, levelH*1.5, rowZ + cellD*0.4);
+                        if (isLastCol) {
+                            setInstance(iUpright, uprightCount++, colX + cellW/2, levelH*1.5, rowZ - cellD*0.4);
+                            setInstance(iUpright, uprightCount++, colX + cellW/2, levelH*1.5, rowZ + cellD*0.4);
+                        }
+
+                        // Poutres (Lisses)
+                        for (let l = 0; l <= z.gerb; l++) {
+                            const beamY = (l === 0) ? 0.3 : l * levelH;
+                            setInstance(iBeam, beamCount++, colX, beamY, rowZ - cellD*0.4, cellW, 1, 1);
+                            setInstance(iBeam, beamCount++, colX, beamY, rowZ + cellD*0.4, cellW, 1, 1);
+                        }
+
+                        // Palettes & Caisses
+                        for (let g = 0; g < z.gerb; g++) {
+                            if (Math.random() > 0.1) { // 90% fill rate for density
+                                const yPos = (g === 0) ? 0.5 : (g * levelH) + 0.2; 
+                                const oX = (Math.random() - 0.5) * (cellW * 0.1); 
+                                const oZ = (Math.random() - 0.5) * (cellD * 0.1);
+                                const rY = (Math.random() - 0.5) * 0.1;
+
+                                setInstance(iPallet, palletCount++, colX + oX, yPos, rowZ + oZ, pW/3.2, 1, pD/3.2, 0,rY,0);
+                                
+                                colorObj.setHex(baseColorHex);
+                                colorObj.offsetHSL(0, 0, (Math.random() - 0.5) * 0.15);
+                                
+                                setInstanceColor(iBox, boxCount++, colX + oX, yPos + 1.6, rowZ + oZ, (pW*0.9)/2.8, 1, (pD*0.9)/2.8, 0,rY,0, colorObj);
+                            }
+                        }
+                    }
+                }
+            });
+
+            iBox.count = boxCount; iBox.instanceMatrix.needsUpdate = true; iBox.instanceColor.needsUpdate = true;
+            iPallet.count = palletCount; iPallet.instanceMatrix.needsUpdate = true;
+            iUpright.count = uprightCount; iUpright.instanceMatrix.needsUpdate = true;
+            iBeam.count = beamCount; iBeam.instanceMatrix.needsUpdate = true;
+
+            document.getElementById('stat-pallets').innerText = boxCount.toLocaleString();
+        }
+
+        function setInstance(mesh, index, x, y, z, sx=1, sy=1, sz=1, rx=0, ry=0, rz=0) {
+            dummy.position.set(x, y, z); dummy.scale.set(sx, sy, sz); dummy.rotation.set(rx, ry, rz);
+            dummy.updateMatrix(); mesh.setMatrixAt(index, dummy.matrix);
+        }
+        function setInstanceColor(mesh, index, x, y, z, sx, sy, sz, rx, ry, rz, color) {
+            setInstance(mesh, index, x, y, z, sx, sy, sz, rx, ry, rz); mesh.setColorAt(index, color);
+        }
+
+        function buildSpecificModels3D() {
+            // Camions devant les Quais (Q1 à Q4)
+            PLAN_3D.filter(z => z.id.startsWith('q')).forEach((q) => {
+                const w = (q.w / 100) * W_3D; const h = (q.h / 100) * D_3D;
+                const x = (q.x / 100) * W_3D - W_3D/2 + w/2; const z = (q.y / 100) * D_3D - D_3D/2 + h/2;
+
+                const door = new THREE.Mesh(new THREE.BoxGeometry(w*0.8, 12, 1), new THREE.MeshStandardMaterial({ color: 0x1e293b }));
+                door.position.set(x, 6, z - h/2); scene3D.add(door);
+
+                const leveler = new THREE.Mesh(new THREE.BoxGeometry(w*0.7, 0.6, h*1.5), new THREE.MeshStandardMaterial({ color: 0x0f172a }));
+                leveler.position.set(x, 0.3, z); scene3D.add(leveler);
+
+                if(Math.random() > 0.2) createDetailedTruck(x, z - h/2 - 18, Math.PI); 
+            });
+
+            // Chariots élévateurs
+            const flZone = PLAN_3D.find(z => z.id === 'forklift');
+            if(flZone) {
+                const x = (flZone.x / 100) * W_3D - W_3D/2 + ((flZone.w / 100) * W_3D)/2;
+                const z = (flZone.y / 100) * D_3D - D_3D/2 + ((flZone.h / 100) * D_3D)/2;
+                createForklift(x - 8, z, Math.PI/4);
+                createForklift(x + 8, z, -Math.PI/4);
+            }
+
+            // AGVs
+            const agvZone = PLAN_3D.find(z => z.id === 'agv');
+            if(agvZone) {
+                const x = (agvZone.x / 100) * W_3D - W_3D/2 + ((agvZone.w / 100) * W_3D)/2;
+                const z = (agvZone.y / 100) * D_3D - D_3D/2 + ((agvZone.h / 100) * D_3D)/2;
+                createAGV(x - 6, z + 6); createAGV(x + 6, z - 6);
+            }
+
+            // Bureau Expédition en Verre
+            const bData = PLAN_3D.find(z => z.id === 'bureau');
+            if (bData) {
+                const bW = (bData.w / 100) * W_3D; const bD = (bData.h / 100) * D_3D;
+                const bX = (bData.x / 100) * W_3D - W_3D/2 + bW/2; const bZ = (bData.y / 100) * D_3D - D_3D/2 + bD/2;
+
+                const offGrp = new THREE.Group(); offGrp.position.set(bX, 0, bZ);
+                const glassMat = new THREE.MeshStandardMaterial({ color: 0xbae6fd, transparent: true, opacity: 0.3, roughness: 0.1, side: THREE.DoubleSide });
+
+                const roof = new THREE.Mesh(new THREE.BoxGeometry(bW, 0.5, bD), new THREE.MeshStandardMaterial({color: 0x94a3b8}));
+                roof.position.y = 12; offGrp.add(roof);
+
+                offGrp.add(new THREE.Mesh(new THREE.BoxGeometry(bW, 12, 0.5), glassMat).translateY(6).translateZ(bD/2));
+                offGrp.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 12, bD), glassMat).translateY(6).translateX(-bW/2));
+                offGrp.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 12, bD), glassMat).translateY(6).translateX(bW/2));
+
+                for(let i=0; i<3; i++) {
+                    const desk = new THREE.Mesh(new THREE.BoxGeometry(4, 2.5, 2), new THREE.MeshStandardMaterial({color:0xffffff}));
+                    desk.position.set(-bW/4 + i*6, 1.25, 0); offGrp.add(desk);
+                    const screen = new THREE.Mesh(new THREE.BoxGeometry(1.5, 1, 0.1), new THREE.MeshBasicMaterial({color:0x000000}));
+                    screen.position.set(-bW/4 + i*6, 3, -0.5); offGrp.add(screen);
+                }
+                const pl = new THREE.PointLight(0xffffff, 1, 50); pl.position.set(0, 10, 0); offGrp.add(pl);
+                scene3D.add(offGrp);
+            }
+        }
+
+        function createDetailedTruck(x, z, rotY) {
+            const truck = new THREE.Group();
+            const cabMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.3 }); 
+            const trMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.5 });
+            const wMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+
+            truck.add(new THREE.Mesh(new THREE.BoxGeometry(6, 4, 8), cabMat).translateY(3).translateZ(-16));
+            truck.add(new THREE.Mesh(new THREE.BoxGeometry(6, 4, 5), cabMat).translateY(7).translateZ(-14.5));
+            truck.add(new THREE.Mesh(new THREE.BoxGeometry(8, 10, 24), trMat).translateY(6).translateZ(2));
+
+            const wGeo = new THREE.CylinderGeometry(1.5, 1.5, 1, 16); wGeo.rotateZ(Math.PI/2);
+            [[-4,1.5,-18], [4,1.5,-18], [-4,1.5,-13], [4,1.5,-13], [-4,1.5,8], [4,1.5,8], [-4,1.5,12], [4,1.5,12]].forEach(p => {
+                const w = new THREE.Mesh(wGeo, wMat); w.position.set(p[0], p[1], p[2]); truck.add(w);
+            });
+
+            truck.position.set(x, 0, z); truck.rotation.y = rotY;
+            scene3D.add(truck);
+        }
+
+        function createForklift(x, z, rotY) {
+            const fl = new THREE.Group();
+            const matBody = new THREE.MeshStandardMaterial({color: 0xe67e22, roughness: 0.4});
+            const matBlack = new THREE.MeshStandardMaterial({color: 0x111111});
+            fl.add(new THREE.Mesh(new THREE.BoxGeometry(3, 2, 4), matBody).translateY(1.5));
+            fl.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 5, 0.5), matBlack).translateY(2.5).translateZ(2).translateX(-1));
+            fl.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 5, 0.5), matBlack).translateY(2.5).translateZ(2).translateX(1));
+            fl.add(new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 3), matBlack).translateY(0.2).translateZ(3.5).translateX(-1));
+            fl.add(new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 3), matBlack).translateY(0.2).translateZ(3.5).translateX(1));
+            fl.add(new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.2, 2.5), matBlack).translateY(4).translateZ(-0.5));
+            fl.position.set(x, 0, z); fl.rotation.y = rotY;
+            scene3D.add(fl);
+        }
+
+        function createAGV(x, z) {
+            const agv = new THREE.Group();
+            agv.add(new THREE.Mesh(new THREE.BoxGeometry(3, 1.5, 4), new THREE.MeshStandardMaterial({ color: 0xf1f5f9 })).translateY(1));
+            agv.add(new THREE.Mesh(new THREE.BoxGeometry(2, 0.2, 0.2), new THREE.MeshBasicMaterial({ color: 0x38bdf8 })).translateY(1.8).translateZ(1.9));
+            agv.add(new THREE.Mesh(new THREE.BoxGeometry(2.8, 0.3, 3.8), new THREE.MeshStandardMaterial({color:C_3D.wood})).translateY(2));
+            agv.add(new THREE.Mesh(new THREE.BoxGeometry(2.5, 2.5, 2.5), new THREE.MeshStandardMaterial({color:0x34d399})).translateY(3.5));
+            agv.position.set(x, 0, z);
+            agv.userData = { speed: 1.5, phase: Math.random() * Math.PI * 2, baseX: x, baseZ: z };
+            scene3D.add(agv);
+            if(!window.agvs) window.agvs = []; window.agvs.push(agv);
+        }
+
+        function buildLegend3D() {
+            const container = document.getElementById('legend-3d');
+            const items = [
+                { l: '26 (Bleu)', c: C_3D.bleu26 }, { l: '72 (Jaune)', c: C_3D.jaune72 }, { l: 'Centraux (Blanc)', c: C_3D.blanc },
+                { l: 'Cerclage (Rouge)', c: C_3D.rouge }, { l: 'FG (Rose)', c: C_3D.rose }, { l: 'Structure Métal', c: C_3D.rackU }
+            ];
+            items.forEach(i => {
+                const hx = '#' + i.c.toString(16).padStart(6, '0');
+                container.innerHTML += `<div class="flex items-center gap-2 text-[10px] font-semibold uppercase text-slate-300 bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-600"><div class="w-2.5 h-2.5 rounded-full" style="background:${hx}; box-shadow:0 0 6px ${hx}"></div>${i.l}</div>`;
+            });
+        }
+
+        function onWindowResize3D() {
+            if(!camera3D || !renderer3D) return;
+            const container = document.getElementById('map-3d');
+            const w = container.clientWidth; const h = container.clientHeight;
+            if(w === 0 || h === 0) return;
+            camera3D.aspect = w / h; camera3D.updateProjectionMatrix();
+            renderer3D.setSize(w, h);
+        }
+
+        function animate3D() {
+            if (currentView !== 'FUTURE_3D') {
+                animationId = requestAnimationFrame(animate3D); return;
+            }
+            const time = clock.getElapsedTime();
+            controls3D.update();
+
+            if(window.agvs) {
+                window.agvs.forEach(agv => {
+                    agv.position.x = agv.userData.baseX + Math.sin(time * agv.userData.speed + agv.userData.phase) * 6;
+                });
+            }
+
+            renderer3D.render(scene3D, camera3D);
+            animationId = requestAnimationFrame(animate3D);
+        }
+    </script>
 </body>
 </html>
+
