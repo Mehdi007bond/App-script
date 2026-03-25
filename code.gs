@@ -4,6 +4,134 @@ function doGet() {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
+// ==========================================
+// STANDARD SCHEDULE MAPPING
+// ==========================================
+function getStandardSchedule() {
+  // Mappage des destinations avec leurs horaires standard et quais
+  // Format: {destination: {shifts: [liste des heures par shift], dock: quai assigné}}
+  const schedule = {
+    'RTE': {
+      shifts: {
+        S1: ['06h00'], // Matin
+        S2: ['15h00'], // Après-midi
+        S3: []  // Nuit
+      },
+      dock: 'Q1',
+      frequency: 2 // Nombre de départs par jour
+    },
+    'ZARAGOZA': {
+      shifts: {
+        S1: ['06h00', '07h00'], // Matin
+        S2: ['17h00'], // Après-midi
+        S3: ['23h00']  // Nuit
+      },
+      dock: 'Q2',
+      frequency: 4 // Nombre de départs par jour
+    },
+    'OPEL ZARAGOZA': {
+      shifts: {
+        S1: ['06h00', '07h00'], // Matin
+        S2: ['17h00'], // Après-midi
+        S3: ['23h00']  // Nuit
+      },
+      dock: 'Q2',
+      frequency: 4 // Nombre de départs par jour
+    },
+    'SOMACA': {
+      shifts: {
+        S1: ['08h00'], // Matin
+        S2: [], // Après-midi
+        S3: []  // Nuit
+      },
+      dock: 'Q1',
+      frequency: 1 // Nombre de départs par jour
+    },
+    'PSA KENITRA': {
+      shifts: {
+        S1: ['11h00'], // Matin
+        S2: [], // Après-midi
+        S3: ['22h00']  // Nuit
+      },
+      dock: 'Q3',
+      frequency: 2 // Nombre de départs par jour
+    },
+    'VIGO': {
+      shifts: {
+        S1: ['12h00'], // Matin
+        S2: ['14h00', '16h00'], // Après-midi
+        S3: ['00h00']  // Nuit
+      },
+      dock: 'Q4',
+      frequency: 4 // Nombre de départs par jour
+    },
+    'PSA VIGO': {
+      shifts: {
+        S1: ['12h00'], // Matin
+        S2: ['14h00'], // Après-midi
+        S3: []  // Nuit
+      },
+      dock: 'Q4',
+      frequency: 2 // Nombre de départs par jour
+    },
+    'K9 VIGO': {
+      shifts: {
+        S1: ['12h00'], // Matin
+        S2: ['16h00'], // Après-midi
+        S3: ['00h00']  // Nuit
+      },
+      dock: 'Q4',
+      frequency: 3 // Nombre de départs par jour
+    },
+    'PAMPLONA': {
+      shifts: {
+        S1: [], // Matin
+        S2: [], // Après-midi
+        S3: []  // Nuit
+      },
+      dock: 'Q1',
+      frequency: 1 // Nombre de départs par jour
+    },
+    'MALAISIE': {
+      shifts: {
+        S1: [], // Matin
+        S2: [], // Après-midi
+        S3: []  // Nuit
+      },
+      dock: 'Q2',
+      frequency: 1 // Nombre de départs par jour (export)
+    },
+    'ARGENTINE': {
+      shifts: {
+        S1: [], // Matin
+        S2: [], // Après-midi
+        S3: []  // Nuit
+      },
+      dock: 'Q3',
+      frequency: 1 // Nombre de départs par jour (export)
+    },
+    'AILN': {
+      shifts: {
+        S1: [], // Matin
+        S2: ['15h00'], // Après-midi
+        S3: []  // Nuit
+      },
+      dock: 'Q1',
+      frequency: 1 // Nombre de départs par jour
+    },
+    'K9 MANGUALDE': {
+      shifts: {
+        S1: [], // Matin
+        S2: ['21h00'], // Après-midi/Soir
+        S3: []  // Nuit
+      },
+      dock: 'Q3',
+      frequency: 1 // Nombre de départs par jour
+    }
+  };
+  return schedule;
+}
+
 
 // Reçoit un paramètre "viewType" qui vaut soit 'SERIE' soit 'AFM'
 function getShipmentData(viewType) {
@@ -18,12 +146,15 @@ function getShipmentData(viewType) {
   if (viewType === 'SERIE') {
     const sheet = ss.getSheetByName("Serie (Couverture)");
     if (!sheet) throw new Error("Impossible de trouver la feuille 'Serie (Couverture)'");
-   
+
     // SERIE: Ligne 8, de AN (colonne 40) à AZ (colonne 52) -> 13 colonnes exactes, sur 145 lignes
     const data = sheet.getRange(8, 40, 145, 13).getValues();
     const result = [];
     let currentDestination = "Unknown";
     let currentProject = "Unknown";
+
+    // Récupérer le standard pour l'attribution des quais et la répartition
+    const standardSchedule = getStandardSchedule();
    
     for (let i = 0; i < data.length; i++) {
       let row = data[i];
@@ -106,6 +237,28 @@ function getShipmentData(viewType) {
           else if (p.includes('P2XHL')) positionsExp2 = 1;
 
 
+          // ===================================================================
+          // NOUVELLES COLONNES : Total Remorques/Semaine, Ordre Pickup, Quai
+          // ===================================================================
+
+          // 1. Total Remorques / Semaine : somme des 6 jours
+          let totalRemorquesWeek = sumDays;
+
+          // 2. Attribution du quai basé sur le standard
+          let dockAssignment = 'Q1'; // Défaut
+          let destKey = currentDestination.toUpperCase();
+
+          // Recherche du quai dans le standard (match flexible)
+          for (let schedKey in standardSchedule) {
+            if (destKey.includes(schedKey.toUpperCase()) || schedKey.toUpperCase().includes(destKey)) {
+              dockAssignment = standardSchedule[schedKey].dock;
+              break;
+            }
+          }
+
+          // 3. Ordre de pickup : sera calculé globalement après le tri (temporairement 0)
+          let pickupOrder = 0;
+
           result.push({
             destination: currentDestination,
             project: currentProject,
@@ -116,11 +269,31 @@ function getShipmentData(viewType) {
             rawDays: rawDays,
             totalPlanning: sumDays,
             gerb: gerbabilite,
-            exp2: positionsExp2
+            exp2: positionsExp2,
+            totalRemorquesWeek: totalRemorquesWeek,
+            pickupOrder: pickupOrder,
+            dockAssignment: dockAssignment
           });
         }
       }
     }
+
+    // ===================================================================
+    // CALCULER L'ORDRE DE PICKUP basé sur le nombre total de remorques
+    // ===================================================================
+    // Trier par totalRemorquesWeek (descendant) pour obtenir l'ordre
+    result.sort((a, b) => b.totalRemorquesWeek - a.totalRemorquesWeek);
+
+    // Attribuer l'ordre de pickup
+    let currentOrder = 1;
+    for (let i = 0; i < result.length; i++) {
+      if (result[i].totalRemorquesWeek > 0) {
+        result[i].pickupOrder = currentOrder++;
+      } else {
+        result[i].pickupOrder = 0; // Pas d'ordre si pas de remorques
+      }
+    }
+
     return { type: 'SERIE', data: result };
   }
  
