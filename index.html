@@ -1,1 +1,658 @@
-Current Date and Time (UTC - YYYY-MM-DD HH:MM:SS formatted): 2026-03-25 21:31:57
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Global Shipment Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVkdf3G0tTiKcS6CXizkRCFW3cvclWIKVcQ==" crossorigin="anonymous"><\/script>
+  <style>
+    :root {
+      --bg-dark: #0a0e1a;
+      --bg-panel: #0f1626;
+      --bg-card: #141e33;
+      --accent-blue: #00d4ff;
+      --accent-green: #00ff88;
+      --accent-orange: #ff6b35;
+      --accent-purple: #9b59ff;
+      --accent-yellow: #ffd700;
+      --text-primary: #e0e8ff;
+      --text-secondary: #7a90b8;
+      --border-color: #1e3060;
+      --danger: #ff4757;
+      --warning: #ffa502;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 28px;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border-color);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .header-title { display: flex; align-items: center; gap: 12px; }
+    .logo {
+      width: 38px; height: 38px;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: bold;
+    }
+    .header-title h1 {
+      font-size: 1.25rem; font-weight: 700;
+      background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .header-title p { font-size: 0.72rem; color: var(--text-secondary); }
+    .header-right { display: flex; align-items: center; gap: 14px; }
+    #live-time { font-size: 0.8rem; color: var(--text-secondary); }
+    .view-tabs {
+      display: flex; gap: 4px;
+      padding: 10px 28px;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border-color);
+    }
+    .tab-btn {
+      padding: 7px 22px;
+      border: 1px solid var(--border-color);
+      background: transparent; color: var(--text-secondary);
+      border-radius: 6px; cursor: pointer;
+      font-size: 0.85rem; font-weight: 600;
+      transition: all 0.25s; letter-spacing: 0.5px;
+    }
+    .tab-btn.active {
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      color: #fff; border-color: transparent;
+    }
+    .tab-btn:hover:not(.active) { background: var(--bg-card); color: var(--text-primary); }
+    main {
+      display: grid; grid-template-columns: 1fr 340px;
+      height: calc(100vh - 112px);
+    }
+    #canvas-section { position: relative; background: var(--bg-dark); overflow: hidden; }
+    #three-canvas { width: 100%; height: 100%; display: block; }
+    .canvas-overlay {
+      position: absolute; top: 14px; left: 14px;
+      display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+    }
+    .canvas-badge {
+      background: rgba(10,14,26,0.8); border: 1px solid var(--border-color);
+      border-radius: 6px; padding: 6px 12px; font-size: 0.75rem; color: var(--accent-blue);
+      backdrop-filter: blur(4px); pointer-events: auto;
+    }
+    .canvas-controls { position: absolute; bottom: 14px; left: 14px; display: flex; gap: 8px; }
+    .ctrl-btn {
+      background: rgba(10,14,26,0.85); border: 1px solid var(--border-color);
+      color: var(--text-primary); border-radius: 6px; padding: 6px 14px;
+      font-size: 0.78rem; cursor: pointer; transition: border-color 0.2s;
+    }
+    .ctrl-btn:hover { border-color: var(--accent-blue); }
+    .tooltip-3d {
+      position: absolute;
+      background: rgba(10,14,26,0.95); border: 1px solid var(--accent-blue);
+      border-radius: 8px; padding: 10px 14px; font-size: 0.8rem;
+      pointer-events: none; display: none; max-width: 220px; z-index: 50;
+    }
+    .tooltip-3d .tt-title { color: var(--accent-blue); font-weight: 700; margin-bottom: 4px; }
+    .tooltip-3d .tt-row {
+      display: flex; justify-content: space-between; gap: 10px;
+      color: var(--text-secondary); font-size: 0.75rem; margin: 2px 0;
+    }
+    .tooltip-3d .tt-row span:last-child { color: var(--text-primary); font-weight: 600; }
+    aside {
+      background: var(--bg-panel); border-left: 1px solid var(--border-color);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .panel-header {
+      padding: 14px 18px 10px; border-bottom: 1px solid var(--border-color);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .panel-header h2 { font-size: 0.9rem; font-weight: 700; }
+    .badge-count {
+      background: var(--accent-blue); color: #fff;
+      border-radius: 10px; padding: 2px 9px; font-size: 0.72rem; font-weight: 700;
+    }
+    .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px; border-bottom: 1px solid var(--border-color); }
+    .kpi-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px 12px; }
+    .kpi-card .kpi-label { font-size: 0.68rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px; }
+    .kpi-card .kpi-value { font-size: 1.4rem; font-weight: 700; }
+    .kpi-card.blue .kpi-value  { color: var(--accent-blue); }
+    .kpi-card.green .kpi-value { color: var(--accent-green); }
+    .kpi-card.orange .kpi-value { color: var(--accent-orange); }
+    .kpi-card.purple .kpi-value { color: var(--accent-purple); }
+    .search-bar { padding: 10px 12px; border-bottom: 1px solid var(--border-color); display: flex; gap: 8px; }
+    .search-bar input {
+      flex: 1; background: var(--bg-card); border: 1px solid var(--border-color);
+      color: var(--text-primary); border-radius: 6px; padding: 6px 10px; font-size: 0.8rem; outline: none;
+    }
+    .search-bar input:focus { border-color: var(--accent-blue); }
+    .filter-select {
+      background: var(--bg-card); border: 1px solid var(--border-color);
+      color: var(--text-primary); border-radius: 6px; padding: 6px 8px; font-size: 0.78rem; outline: none; cursor: pointer;
+    }
+    .table-wrap { flex: 1; overflow-y: auto; padding: 0 12px 12px; }
+    .table-wrap::-webkit-scrollbar { width: 5px; }
+    .table-wrap::-webkit-scrollbar-track { background: var(--bg-dark); }
+    .table-wrap::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; margin-top: 8px; }
+    .data-table th {
+      position: sticky; top: 0; background: var(--bg-panel);
+      color: var(--text-secondary); text-transform: uppercase; font-size: 0.65rem;
+      letter-spacing: 0.5px; padding: 8px 6px; border-bottom: 1px solid var(--border-color); text-align: left;
+    }
+    .data-table td { padding: 7px 6px; border-bottom: 1px solid rgba(30,48,96,0.4); vertical-align: middle; }
+    .data-table tr:hover td { background: rgba(0,212,255,0.05); cursor: pointer; }
+    .data-table tr.selected td { background: rgba(0,212,255,0.1); }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.65rem; font-weight: 700; }
+    .pill-blue   { background: rgba(0,212,255,0.15); color: var(--accent-blue); }
+    .pill-green  { background: rgba(0,255,136,0.15); color: var(--accent-green); }
+    .pill-orange { background: rgba(255,107,53,0.15); color: var(--accent-orange); }
+    .pill-red    { background: rgba(255,71,87,0.15);  color: var(--danger); }
+    .pill-purple { background: rgba(155,89,255,0.15); color: var(--accent-purple); }
+    .bar-mini { display: inline-flex; align-items: center; gap: 4px; width: 100%; }
+    .bar-mini .bar-bg { flex: 1; height: 5px; background: var(--border-color); border-radius: 3px; overflow: hidden; }
+    .bar-mini .bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple)); }
+    #loading-overlay {
+      position: fixed; inset: 0; background: rgba(10,14,26,0.95);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9999;
+    }
+    .spinner {
+      width: 48px; height: 48px; border: 3px solid var(--border-color);
+      border-top-color: var(--accent-blue); border-radius: 50%;
+      animation: spin 0.8s linear infinite; margin-bottom: 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #error-banner {
+      display: none; background: rgba(255,71,87,0.15); border: 1px solid var(--danger);
+      color: var(--danger); padding: 10px 18px; border-radius: 8px; font-size: 0.82rem; margin: 12px;
+    }
+    #detail-panel {
+      display: none; position: fixed; right: 0; top: 0; bottom: 0; width: 380px;
+      background: var(--bg-panel); border-left: 1px solid var(--border-color);
+      z-index: 200; overflow-y: auto; padding: 20px; animation: slideIn 0.25s ease;
+    }
+    @keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+    .detail-close {
+      float: right; background: none; border: 1px solid var(--border-color);
+      color: var(--text-secondary); border-radius: 5px; padding: 4px 10px; cursor: pointer; font-size: 0.8rem;
+    }
+    .detail-close:hover { border-color: var(--danger); color: var(--danger); }
+    .detail-title { font-size: 1rem; font-weight: 700; color: var(--accent-blue); margin-bottom: 4px; margin-top: 8px; }
+    .detail-sub { font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 16px; }
+    .detail-section { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+    .detail-section h3 { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-secondary); margin-bottom: 10px; }
+    .detail-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid rgba(30,48,96,0.3); font-size: 0.8rem; }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-row .dr-label { color: var(--text-secondary); }
+    .detail-row .dr-value { font-weight: 600; }
+    .days-chart { display: flex; gap: 4px; align-items: flex-end; height: 60px; margin-top: 8px; }
+    .day-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; height: 100%; justify-content: flex-end; }
+    .day-bar { width: 100%; background: linear-gradient(0deg, var(--accent-blue), var(--accent-purple)); border-radius: 3px 3px 0 0; min-height: 2px; }
+    .day-label { font-size: 0.6rem; color: var(--text-secondary); }
+    .legend {
+      position: absolute; bottom: 14px; right: 14px;
+      background: rgba(10,14,26,0.85); border: 1px solid var(--border-color);
+      border-radius: 8px; padding: 10px 14px; font-size: 0.72rem; backdrop-filter: blur(4px);
+    }
+    .legend h4 { color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; font-size: 0.65rem; }
+    .legend-item { display: flex; align-items: center; gap: 7px; margin: 3px 0; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <p style="color:var(--text-secondary);font-size:0.9rem;">Loading shipment data&hellip;</p>
+</div>
+
+<header>
+  <div class="header-title">
+    <div class="logo">&#x1F310;</div>
+    <div>
+      <h1>Global Shipment Dashboard</h1>
+      <p>Digital Twin &middot; Real-Time Logistics Intelligence</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <span id="live-time"></span>
+    <button class="ctrl-btn" onclick="refreshData()">&#x21BB; Refresh</button>
+  </div>
+</header>
+
+<div class="view-tabs">
+  <button class="tab-btn active" onclick="switchView('SERIE', this)">&#x1F4E6; SERIE View</button>
+  <button class="tab-btn" onclick="switchView('AFM', this)">&#x1F69B; AFM View</button>
+  <button class="tab-btn" id="btn-3d" onclick="toggle3D(this)">&#x1F52E; 3D Digital Twin</button>
+</div>
+
+<main>
+  <section id="canvas-section">
+    <canvas id="three-canvas"></canvas>
+    <div class="canvas-overlay">
+      <div class="canvas-badge" id="view-badge">&#x1F4E6; SERIE &mdash; Supply Chain View</div>
+      <div class="canvas-badge" id="node-count-badge">Nodes: 0</div>
+    </div>
+    <div class="canvas-controls">
+      <button class="ctrl-btn" onclick="resetCamera()">&#x2316; Reset Camera</button>
+      <button class="ctrl-btn" onclick="toggleAutoRotate()">&#x21BB; Auto Rotate</button>
+      <button class="ctrl-btn" onclick="toggleWireframe()">&#x2B21; Wireframe</button>
+    </div>
+    <div id="tooltip-3d" class="tooltip-3d"></div>
+    <div class="legend" id="scene-legend">
+      <h4>Legend</h4>
+      <div class="legend-item"><div class="legend-dot" style="background:#00d4ff;"></div>Origin Hub</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#00ff88;"></div>Destination</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ffd700;"></div>In Transit</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ff6b35;"></div>Critical / Alert</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#9b59ff;"></div>AFM Client</div>
+    </div>
+  </section>
+
+  <aside>
+    <div class="panel-header">
+      <h2 id="panel-title">Shipment Records</h2>
+      <span class="badge-count" id="record-count">0</span>
+    </div>
+    <div class="kpi-grid" id="kpi-grid">
+      <div class="kpi-card blue"><div class="kpi-label">Total Items</div><div class="kpi-value" id="kpi-total">&ndash;</div></div>
+      <div class="kpi-card green"><div class="kpi-label">Stock Palettes</div><div class="kpi-value" id="kpi-stock">&ndash;</div></div>
+      <div class="kpi-card orange"><div class="kpi-label">Planning Days</div><div class="kpi-value" id="kpi-days">&ndash;</div></div>
+      <div class="kpi-card purple"><div class="kpi-label">Destinations</div><div class="kpi-value" id="kpi-dest">&ndash;</div></div>
+    </div>
+    <div id="error-banner"></div>
+    <div class="search-bar">
+      <input type="text" id="search-input" placeholder="Search destination, project&hellip;" oninput="filterTable()" />
+      <select class="filter-select" id="filter-select" onchange="filterTable()"><option value="">All</option></select>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table" id="data-table">
+        <thead id="table-head"></thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+  </aside>
+</main>
+
+<div id="detail-panel">
+  <button class="detail-close" onclick="closeDetail()">&#x2715; Close</button>
+  <div id="detail-content"></div>
+</div>
+
+<script>
+var currentView = 'SERIE';
+var allData = [];
+var filteredData = [];
+var scene, camera, renderer, animationId;
+var autoRotate = false;
+var wireframe = false;
+var nodeMeshes = [];
+var linkLines = [];
+var raycaster, mouse;
+var show3D = true;
+
+function updateTime() {
+  var el = document.getElementById('live-time');
+  if (el) el.textContent = new Date().toLocaleString('fr-FR', { hour12: false });
+}
+setInterval(updateTime, 1000);
+updateTime();
+
+function loadData(viewType) {
+  document.getElementById('loading-overlay').style.display = 'flex';
+  document.getElementById('error-banner').style.display = 'none';
+  if (typeof google !== 'undefined' && google.script) {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        document.getElementById('loading-overlay').style.display = 'none';
+        allData = result.data || [];
+        filteredData = allData.slice();
+        renderAll();
+      })
+      .withFailureHandler(function(err) {
+        document.getElementById('loading-overlay').style.display = 'none';
+        showError('Failed to load data: ' + (err.message || err));
+        allData = [];
+        filteredData = [];
+        renderAll();
+      })
+      .getShipmentData(viewType);
+  } else {
+    setTimeout(function() {
+      document.getElementById('loading-overlay').style.display = 'none';
+      allData = generateDemoData(viewType);
+      filteredData = allData.slice();
+      renderAll();
+    }, 600);
+  }
+}
+
+function generateDemoData(viewType) {
+  var i, items = [];
+  if (viewType === 'SERIE') {
+    var dests = ['ZARAGOZE','SOMACA','VIGO','PAMPLONA','MALAISIE','ARGENTINE','RTE'];
+    var projs = ['P2X MV','XJI PH2','P2JO MCM','P2JORL FDR','XJI PH1','POLO CKD','K9 MCM','TROC','P2XHL'];
+    for (i = 0; i < 45; i++) {
+      var days = [Math.floor(Math.random()*20),Math.floor(Math.random()*15),Math.floor(Math.random()*18),
+                  Math.floor(Math.random()*12),Math.floor(Math.random()*22),Math.floor(Math.random()*10)];
+      items.push({
+        destination: dests[i % dests.length], project: projs[i % projs.length],
+        description: 'REF-' + (1000+i),
+        palette: Math.floor(Math.random()*50)+5, stockPal: Math.floor(Math.random()*30),
+        stockRem: Math.floor(Math.random()*8), rawDays: days,
+        totalPlanning: days.reduce(function(a,b){return a+b;},0),
+        gerb: [2,3,4][i%3], exp2: [1,2,3,5,6,12,19,22,26,33,53,120,142,156,160][i%15]
+      });
+    }
+  } else {
+    var clients = ['RENAULT ESPAGNE','RENAULT MAROC','VOLKSWAGEN','STELLANTIS','TOYOTA'];
+    var ps = ['P2X AFM','XJI AFM','K9 AFM','J92 AFM','X52 AFM'];
+    for (i = 0; i < 35; i++) {
+      items.push({
+        client: clients[i % clients.length], project: ps[i % ps.length],
+        description: 'AFM-REF-' + (2000+i),
+        cjt: Math.floor(Math.random()*100)+10, palletsCjt: Math.floor(Math.random()*40)+5,
+        palletsFg: Math.floor(Math.random()*35)+3, remorquesFg: Math.floor(Math.random()*10)+1,
+        besoinPalFg: Math.floor(Math.random()*50)+5, demandeRemFg: Math.floor(Math.random()*8)+1
+      });
+    }
+  }
+  return items;
+}
+
+function renderAll() { updateKPIs(); updateFilterOptions(); renderTable(); build3DScene(); }
+
+function updateKPIs() {
+  var total = filteredData.length;
+  document.getElementById('kpi-total').textContent = total;
+  document.getElementById('record-count').textContent = total;
+  if (currentView === 'SERIE') {
+    document.getElementById('kpi-stock').textContent = filteredData.reduce(function(s,r){return s+(r.stockPal||0);},0);
+    document.getElementById('kpi-days').textContent  = filteredData.reduce(function(s,r){return s+(r.totalPlanning||0);},0);
+    document.getElementById('kpi-dest').textContent  = (function(){ var s={}; filteredData.forEach(function(r){s[r.destination]=1;}); return Object.keys(s).length; })();
+    document.querySelector('.kpi-card.green .kpi-label').textContent  = 'Stock Palettes';
+    document.querySelector('.kpi-card.orange .kpi-label').textContent = 'Planning Days';
+    document.querySelector('.kpi-card.purple .kpi-label').textContent = 'Destinations';
+  } else {
+    document.getElementById('kpi-stock').textContent = filteredData.reduce(function(s,r){return s+(r.palletsCjt||0);},0);
+    document.getElementById('kpi-days').textContent  = filteredData.reduce(function(s,r){return s+(r.remorquesFg||0);},0);
+    document.getElementById('kpi-dest').textContent  = (function(){ var s={}; filteredData.forEach(function(r){s[r.client]=1;}); return Object.keys(s).length; })();
+    document.querySelector('.kpi-card.green .kpi-label').textContent  = 'Palettes CJT';
+    document.querySelector('.kpi-card.orange .kpi-label').textContent = 'Remorques FG';
+    document.querySelector('.kpi-card.purple .kpi-label').textContent = 'Clients';
+  }
+}
+
+function updateFilterOptions() {
+  var sel = document.getElementById('filter-select');
+  var seen = {}, values = [];
+  allData.forEach(function(r){ var k = currentView==='SERIE'?r.destination:r.client; if(k&&!seen[k]){seen[k]=1;values.push(k);} });
+  values.sort();
+  sel.innerHTML = '<option value="">All</option>';
+  values.forEach(function(v){ var o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o); });
+}
+
+function filterTable() {
+  var q = document.getElementById('search-input').value.toLowerCase();
+  var filt = document.getElementById('filter-select').value;
+  filteredData = allData.filter(function(r) {
+    var ms = !q || (currentView==='SERIE'
+      ? ((r.destination||'').toLowerCase().includes(q)||(r.project||'').toLowerCase().includes(q)||(r.description||'').toLowerCase().includes(q))
+      : ((r.client||'').toLowerCase().includes(q)||(r.project||'').toLowerCase().includes(q)||(r.description||'').toLowerCase().includes(q)));
+    var mf = !filt || (currentView==='SERIE'?r.destination===filt:r.client===filt);
+    return ms && mf;
+  });
+  updateKPIs(); renderTable(); build3DScene();
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderTable() {
+  var head = document.getElementById('table-head');
+  var body = document.getElementById('table-body');
+  if (currentView === 'SERIE') {
+    head.innerHTML = '<tr><th>Destination</th><th>Project</th><th>Stock Pal</th><th>Total Days</th><th>Palette</th></tr>';
+    body.innerHTML = '';
+    var maxD = Math.max.apply(null, filteredData.map(function(r){return r.totalPlanning||0;}).concat([1]));
+    filteredData.forEach(function(r, idx) {
+      var pct = Math.round(((r.totalPlanning||0)/maxD)*100);
+      var sc = r.stockPal>20?'pill-green':r.stockPal>5?'pill-blue':'pill-orange';
+      var tr = document.createElement('tr');
+      tr.onclick = (function(row,i){ return function(){ showDetail(row,i); }; })(r, idx);
+      tr.innerHTML = '<td><span class="pill pill-blue">'+escHtml(r.destination||'')+'</span></td>'
+        +'<td style="color:var(--text-secondary);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml(r.project||'')+'">'+escHtml(r.project||'')+'</td>'
+        +'<td><span class="pill '+sc+'">'+r.stockPal+'</span></td>'
+        +'<td><div class="bar-mini"><div class="bar-bg"><div class="bar-fill" style="width:'+pct+'%"></div></div><span style="font-size:0.7rem;color:var(--text-secondary)">'+r.totalPlanning+'</span></div></td>'
+        +'<td style="color:var(--accent-yellow)">'+r.palette+'</td>';
+      body.appendChild(tr);
+    });
+  } else {
+    head.innerHTML = '<tr><th>Client</th><th>Project</th><th>CJT</th><th>Pal FG</th><th>Rem FG</th></tr>';
+    body.innerHTML = '';
+    filteredData.forEach(function(r, idx) {
+      var tr = document.createElement('tr');
+      tr.onclick = (function(row,i){ return function(){ showDetail(row,i); }; })(r, idx);
+      var rc = r.remorquesFg>5?'pill-orange':'pill-green';
+      tr.innerHTML = '<td><span class="pill pill-purple">'+escHtml(r.client||'')+'</span></td>'
+        +'<td style="color:var(--text-secondary);max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+escHtml(r.project||'')+'">'+escHtml(r.project||'')+'</td>'
+        +'<td style="color:var(--accent-blue)">'+r.cjt+'</td>'
+        +'<td>'+r.palletsFg+'</td>'
+        +'<td><span class="pill '+rc+'">'+r.remorquesFg+'</span></td>';
+      body.appendChild(tr);
+    });
+  }
+}
+
+function showDetail(r, idx) {
+  var rows = document.querySelectorAll('#table-body tr');
+  rows.forEach(function(tr){tr.classList.remove('selected');});
+  if (rows[idx]) rows[idx].classList.add('selected');
+  var content = document.getElementById('detail-content');
+  if (currentView === 'SERIE') {
+    var maxDay = Math.max.apply(null, r.rawDays.concat([1]));
+    var bars = r.rawDays.map(function(v,i){
+      var h = Math.round((v/maxDay)*50);
+      return '<div class="day-bar-wrap"><div class="day-bar" style="height:'+h+'px" title="D'+(i+1)+': '+v+'"></div><div class="day-label">D'+(i+1)+'</div></div>';
+    }).join('');
+    content.innerHTML = '<div class="detail-title">'+escHtml(r.destination)+'</div>'
+      +'<div class="detail-sub">'+escHtml(r.project)+' &rsaquo; '+escHtml(r.description)+'</div>'
+      +'<div class="detail-section"><h3>Stock &amp; Palette</h3>'
+      +'<div class="detail-row"><span class="dr-label">Stock Palettes</span><span class="dr-value" style="color:var(--accent-green)">'+r.stockPal+'</span></div>'
+      +'<div class="detail-row"><span class="dr-label">Stock Remorques</span><span class="dr-value">'+r.stockRem+'</span></div>'
+      +'<div class="detail-row"><span class="dr-label">Palette Commande</span><span class="dr-value" style="color:var(--accent-yellow)">'+r.palette+'</span></div>'
+      +'<div class="detail-row"><span class="dr-label">Positions EXP2</span><span class="dr-value" style="color:var(--accent-blue)">'+r.exp2+'</span></div>'
+      +'</div>'
+      +'<div class="detail-section"><h3>Gerbabilit&eacute;</h3>'
+      +'<div class="detail-row"><span class="dr-label">Niveau</span><span class="dr-value">'+r.gerb+' couches</span></div>'
+      +'</div>'
+      +'<div class="detail-section"><h3>Planning (6 jours) &mdash; Total: '+r.totalPlanning+'</h3>'
+      +'<div class="days-chart">'+bars+'</div></div>';
+  } else {
+    content.innerHTML = '<div class="detail-title">'+escHtml(r.client)+'</div>'
+      +'<div class="detail-sub">'+escHtml(r.project)+' &rsaquo; '+escHtml(r.description)+'</div>'
+      +'<div class="detail-section"><h3>CJT &amp; Palettes</h3>'
+      +'<div class="detail-row"><span class="dr-label">CJT</span><span class="dr-value" style="color:var(--accent-blue)">'+r.cjt+'</span></div>'
+      +'<div class="detail-row"><span class="dr-label">Palettes CJT</span><span class="dr-value">'+r.palletsCjt+'</span></div>'
+      +'<div class="detail-row"><span class="dr-label">Palettes FG</span><span class="dr-value">'+r.palletsFg+'</span></div>'
+      +'</div>'
+      +'<div class="detail-section"><h3>Remorques &amp; Besoin</h3>'
+      +'<div class="detail-row"><span class="dr-label">Remorques FG</span><span class="dr-value" style="color:var(--accent-orange)">'+r.remorquesFg+'</span></div>'
+      +'<div class="detail-row"><span class="dr-label">Besoin Pal FG</span><span class="dr-value">'+r.besoinPalFg+'</span></div>'
+      +'<div class="detail-row"><span class="dr-label">Demande Rem FG</span><span class="dr-value" style="color:var(--accent-yellow)">'+r.demandeRemFg+'</span></div>'
+      +'</div>';
+  }
+  document.getElementById('detail-panel').style.display = 'block';
+}
+
+function closeDetail() {
+  document.getElementById('detail-panel').style.display = 'none';
+  document.querySelectorAll('#table-body tr').forEach(function(tr){tr.classList.remove('selected');});
+}
+
+// THREE.JS
+var cameraOrbit = { drag:false, lx:0, ly:0, theta:0.4, phi:0.45, radius:45 };
+
+function initThree() {
+  var canvas = document.getElementById('three-canvas');
+  var section = document.getElementById('canvas-section');
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x080c18);
+  scene.fog = new THREE.FogExp2(0x080c18, 0.018);
+  camera = new THREE.PerspectiveCamera(55, section.clientWidth/section.clientHeight, 0.1, 500);
+  updateCameraOrbit();
+  renderer = new THREE.WebGLRenderer({canvas:canvas, antialias:true});
+  renderer.setSize(section.clientWidth, section.clientHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  scene.add(new THREE.AmbientLight(0x0a1530, 2));
+  var dl = new THREE.DirectionalLight(0x00d4ff, 1.5); dl.position.set(20,30,20); scene.add(dl);
+  var p1 = new THREE.PointLight(0x9b59ff, 2, 60); p1.position.set(-20,10,0); scene.add(p1);
+  var p2 = new THREE.PointLight(0x00ff88, 1.5, 60); p2.position.set(20,5,-15); scene.add(p2);
+  scene.add(new THREE.GridHelper(80, 30, 0x1e3060, 0x111a33));
+  raycaster = new THREE.Raycaster();
+  mouse = new THREE.Vector2(-9999,-9999);
+  setupOrbit(canvas);
+  window.addEventListener('resize', function(){
+    var w=section.clientWidth, h=section.clientHeight;
+    camera.aspect=w/h; camera.updateProjectionMatrix(); renderer.setSize(w,h);
+  });
+  animLoop();
+}
+
+function setupOrbit(canvas) {
+  canvas.addEventListener('mousedown', function(e){ cameraOrbit.drag=true; cameraOrbit.lx=e.clientX; cameraOrbit.ly=e.clientY; });
+  window.addEventListener('mouseup', function(){ cameraOrbit.drag=false; });
+  canvas.addEventListener('mousemove', function(e){
+    var rect=canvas.getBoundingClientRect();
+    mouse.x=((e.clientX-rect.left)/rect.width)*2-1;
+    mouse.y=-((e.clientY-rect.top)/rect.height)*2+1;
+    handleHover(e);
+    if (!cameraOrbit.drag) return;
+    cameraOrbit.theta -= (e.clientX-cameraOrbit.lx)*0.008;
+    cameraOrbit.phi = Math.max(0.1, Math.min(Math.PI/2-0.05, cameraOrbit.phi+(e.clientY-cameraOrbit.ly)*0.008));
+    cameraOrbit.lx=e.clientX; cameraOrbit.ly=e.clientY; updateCameraOrbit();
+  });
+  canvas.addEventListener('wheel', function(e){
+    cameraOrbit.radius=Math.max(10,Math.min(100,cameraOrbit.radius+e.deltaY*0.05)); updateCameraOrbit();
+  });
+}
+
+function updateCameraOrbit() {
+  var r=cameraOrbit.radius, t=cameraOrbit.theta, p=cameraOrbit.phi;
+  camera.position.set(r*Math.sin(p)*Math.sin(t), r*Math.cos(p), r*Math.sin(p)*Math.cos(t));
+  camera.lookAt(0,0,0);
+}
+
+function animLoop() {
+  animationId = requestAnimationFrame(animLoop);
+  if (autoRotate) { cameraOrbit.theta+=0.004; updateCameraOrbit(); }
+  var t=Date.now()*0.001;
+  nodeMeshes.forEach(function(m,i){ if(m.userData.pulse) m.scale.setScalar(1+0.08*Math.sin(t*2+i)); });
+  renderer.render(scene, camera);
+}
+
+function build3DScene() {
+  if (!scene) return;
+  nodeMeshes.forEach(function(m){scene.remove(m);}); nodeMeshes=[];
+  linkLines.forEach(function(l){scene.remove(l);}); linkLines=[];
+  var data=filteredData.slice(0,60);
+  if (!data.length) { document.getElementById('node-count-badge').textContent='Nodes: 0'; return; }
+  var groups={};
+  data.forEach(function(r){ var k=currentView==='SERIE'?r.destination:r.client; if(!groups[k])groups[k]=[]; groups[k].push(r); });
+  var gkeys=Object.keys(groups), n=gkeys.length;
+  var hgeo=new THREE.SphereGeometry(1.5,24,24);
+  var hmat=new THREE.MeshPhongMaterial({color:0x00d4ff,emissive:0x004488,shininess:80});
+  var hmesh=new THREE.Mesh(hgeo,hmat); hmesh.position.set(0,2,0);
+  hmesh.userData={label:'ORIGIN HUB',pulse:true}; scene.add(hmesh); nodeMeshes.push(hmesh);
+  gkeys.forEach(function(key,i){
+    var angle=(i/n)*Math.PI*2, radius=16+(i%3)*5;
+    var x=Math.cos(angle)*radius, z=Math.sin(angle)*radius, y=1;
+    var cnt=groups[key].length, size=0.6+Math.min(cnt/15,1.0);
+    var color=currentView==='SERIE'?0x00ff88:0x9b59ff;
+    var mv=currentView==='SERIE'?Math.max.apply(null,groups[key].map(function(r){return r.stockRem||0;})):
+                                  Math.max.apply(null,groups[key].map(function(r){return r.remorquesFg||0;}));
+    if(mv>5) color=0xff6b35;
+    var geo=new THREE.SphereGeometry(size,16,16);
+    var mat=new THREE.MeshPhongMaterial({color:color,emissive:new THREE.Color(color).multiplyScalar(0.3),shininess:60});
+    var mesh=new THREE.Mesh(geo,mat); mesh.position.set(x,y,z);
+    mesh.userData={label:key,count:cnt,pulse:true}; scene.add(mesh); nodeMeshes.push(mesh);
+    groups[key].slice(0,8).forEach(function(item,j){
+      var ja=(j/Math.max(groups[key].length,1))*Math.PI*2, jr=3.5;
+      var jx=x+Math.cos(ja)*jr, jz=z+Math.sin(ja)*jr, jy=0.5;
+      var jgeo=new THREE.BoxGeometry(0.4,0.4,0.4);
+      var jmat=new THREE.MeshPhongMaterial({color:0xffd700,emissive:0x443300});
+      var jm=new THREE.Mesh(jgeo,jmat); jm.position.set(jx,jy,jz);
+      jm.userData={label:item.description||item.project,item:item}; scene.add(jm); nodeMeshes.push(jm);
+      addLine(new THREE.Vector3(x,y,z), new THREE.Vector3(jx,jy,jz), 0x1e3060);
+    });
+    addLine(new THREE.Vector3(0,2,0), new THREE.Vector3(x,y,z), 0x00d4ff);
+  });
+  document.getElementById('node-count-badge').textContent='Nodes: '+nodeMeshes.length;
+}
+
+function addLine(from, to, color) {
+  var geo=new THREE.BufferGeometry().setFromPoints([from,to]);
+  var mat=new THREE.LineBasicMaterial({color:color,opacity:0.5,transparent:true});
+  var l=new THREE.Line(geo,mat); scene.add(l); linkLines.push(l);
+}
+
+function handleHover(ev) {
+  if (!raycaster||!scene||!camera) return;
+  raycaster.setFromCamera(mouse, camera);
+  var hits=raycaster.intersectObjects(nodeMeshes);
+  var tt=document.getElementById('tooltip-3d');
+  if (hits.length>0) {
+    var ud=hits[0].object.userData;
+    var rect=document.getElementById('three-canvas').getBoundingClientRect();
+    tt.style.left=(ev.clientX-rect.left+14)+'px'; tt.style.top=(ev.clientY-rect.top+14)+'px'; tt.style.display='block';
+    if (ud.count!==undefined) {
+      tt.innerHTML='<div class="tt-title">&#x1F4CD; '+escHtml(ud.label)+'</div><div class="tt-row"><span>Items</span><span>'+ud.count+'</span></div>';
+    } else if (ud.item) {
+      var it=ud.item;
+      tt.innerHTML='<div class="tt-title">'+escHtml(ud.label)+'</div>'
+        +(currentView==='SERIE'
+          ?'<div class="tt-row"><span>Stock Pal</span><span>'+(it.stockPal||0)+'</span></div><div class="tt-row"><span>Total Days</span><span>'+(it.totalPlanning||0)+'</span></div>'
+          :'<div class="tt-row"><span>CJT</span><span>'+(it.cjt||0)+'</span></div><div class="tt-row"><span>Pal FG</span><span>'+(it.palletsFg||0)+'</span></div>');
+    } else {
+      tt.innerHTML='<div class="tt-title">&#x1F310; '+escHtml(ud.label||'Hub')+'</div>';
+    }
+  } else { tt.style.display='none'; }
+}
+
+function resetCamera() { cameraOrbit.theta=0.4; cameraOrbit.phi=0.45; cameraOrbit.radius=45; updateCameraOrbit(); }
+function toggleAutoRotate() { autoRotate=!autoRotate; }
+function toggleWireframe() { wireframe=!wireframe; nodeMeshes.forEach(function(m){if(m.material)m.material.wireframe=wireframe;}); }
+
+function toggle3D(btn) {
+  show3D=!show3D;
+  document.getElementById('canvas-section').style.display=show3D?'block':'none';
+  document.querySelector('main').style.gridTemplateColumns=show3D?'1fr 340px':'0 1fr';
+  btn.textContent=show3D?'\uD83D\uDD2E 3D Digital Twin':'\uD83D\uDCCB Table Only';
+}
+
+function switchView(view, btn) {
+  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active'); currentView=view;
+  document.getElementById('view-badge').textContent=view==='SERIE'?'\uD83D\uDCE6 SERIE \u2014 Supply Chain View':'\uD83D\uDE9B AFM \u2014 Finished Goods View';
+  document.getElementById('panel-title').textContent=view==='SERIE'?'SERIE Records':'AFM Records';
+  document.getElementById('search-input').value='';
+  loadData(view);
+}
+
+function refreshData() { loadData(currentView); }
+
+function showError(msg) {
+  var el=document.getElementById('error-banner'); el.textContent='\u26A0 '+msg; el.style.display='block';
+}
+
+window.addEventListener('load', function(){ initThree(); loadData('SERIE'); });
+</script>
+</body>
+</html>
