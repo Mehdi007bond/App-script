@@ -65,28 +65,28 @@ function getShipmentData(viewType) {
           let cleanProject = currentProject;
          
           let gerbabilite = 3;
-          let p = cleanProject.toUpperCase();
-          let d = currentDestination.toUpperCase();
+          let projectUpper = cleanProject.toUpperCase();
+          let destinationUpper = currentDestination.toUpperCase();
 
-          if (p.includes('XJI')) gerbabilite = 4;
-          else if (p.includes('TRK') || p.includes('P2XHL')) gerbabilite = 2;
+          if (projectUpper.includes('XJI')) gerbabilite = 4;
+          else if (projectUpper.includes('TRK') || projectUpper.includes('P2XHL')) gerbabilite = 2;
 
           let positionsExp2 = 12;
-          if (p.includes('P2X MV') && d.includes('ZARAGOZE')) positionsExp2 = 160;
-          else if (p.includes('XJI PH2') && d.includes('SOMACA')) positionsExp2 = 156;
-          else if (p.includes('XJI PH2') && d.includes('RTE')) positionsExp2 = 156;
-          else if (p.includes('P2JO MCM') && d.includes('ZARAGOZE')) positionsExp2 = 142;
-          else if (p.includes('P2X MV') && (d.includes('MALAISIE') || d.includes('ARGENTINE'))) positionsExp2 = 120;
-          else if (p.includes('P2JORL FDR') && d.includes('ZARAGOZE')) positionsExp2 = 53;
-          else if (p.includes('XJI PH1') && d.includes('SOMACA')) positionsExp2 = 33;
-          else if (p.includes('POLO') && (d.includes('PAMPLONA') || d.includes('CKD'))) positionsExp2 = 26;
-          else if (p.includes('K9 MCM') && d.includes('VIGO')) positionsExp2 = 22;
-          else if (p.includes('TROC')) positionsExp2 = 19;
-          else if (p.includes('P2JORL TRK')) positionsExp2 = 6;
-          else if (p.includes('J92HL')) positionsExp2 = 5;
-          else if (p.includes('X52HL')) positionsExp2 = 3;
-          else if (p.includes('K67')) positionsExp2 = 2;
-          else if (p.includes('P2XHL')) positionsExp2 = 1;
+          if (projectUpper.includes('P2X MV') && destinationUpper.includes('ZARAGOZE')) positionsExp2 = 160;
+          else if (projectUpper.includes('XJI PH2') && destinationUpper.includes('SOMACA')) positionsExp2 = 156;
+          else if (projectUpper.includes('XJI PH2') && destinationUpper.includes('RTE')) positionsExp2 = 156;
+          else if (projectUpper.includes('P2JO MCM') && destinationUpper.includes('ZARAGOZE')) positionsExp2 = 142;
+          else if (projectUpper.includes('P2X MV') && (destinationUpper.includes('MALAISIE') || destinationUpper.includes('ARGENTINE'))) positionsExp2 = 120;
+          else if (projectUpper.includes('P2JORL FDR') && destinationUpper.includes('ZARAGOZE')) positionsExp2 = 53;
+          else if (projectUpper.includes('XJI PH1') && destinationUpper.includes('SOMACA')) positionsExp2 = 33;
+          else if (projectUpper.includes('POLO') && (destinationUpper.includes('PAMPLONA') || destinationUpper.includes('CKD'))) positionsExp2 = 26;
+          else if (projectUpper.includes('K9 MCM') && destinationUpper.includes('VIGO')) positionsExp2 = 22;
+          else if (projectUpper.includes('TROC')) positionsExp2 = 19;
+          else if (projectUpper.includes('P2JORL TRK')) positionsExp2 = 6;
+          else if (projectUpper.includes('J92HL')) positionsExp2 = 5;
+          else if (projectUpper.includes('X52HL')) positionsExp2 = 3;
+          else if (projectUpper.includes('K67')) positionsExp2 = 2;
+          else if (projectUpper.includes('P2XHL')) positionsExp2 = 1;
 
           result.push({
             destination: currentDestination,

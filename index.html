@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Global Shipment Dashboard</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js" integrity="sha512-dLxUelApnYxpLt6K2iomGngnHO83iUvZytA3YjDUCjT0HDOHKXnVkdf3G0tTiKcS6CXizkRCFW3cvclWIKVcQ==" crossorigin="anonymous"><\/script>
   <style>
     :root {
       --bg-dark: #0a0e1a;
@@ -498,7 +498,7 @@ function closeDetail() {
 }
 
 // THREE.JS
-var _orb = { drag:false, lx:0, ly:0, theta:0.4, phi:0.45, radius:45 };
+var cameraOrbit = { drag:false, lx:0, ly:0, theta:0.4, phi:0.45, radius:45 };
 
 function initThree() {
   var canvas = document.getElementById('three-canvas');
@@ -527,32 +527,32 @@ function initThree() {
 }
 
 function setupOrbit(canvas) {
-  canvas.addEventListener('mousedown', function(e){ _orb.drag=true; _orb.lx=e.clientX; _orb.ly=e.clientY; });
-  window.addEventListener('mouseup', function(){ _orb.drag=false; });
+  canvas.addEventListener('mousedown', function(e){ cameraOrbit.drag=true; cameraOrbit.lx=e.clientX; cameraOrbit.ly=e.clientY; });
+  window.addEventListener('mouseup', function(){ cameraOrbit.drag=false; });
   canvas.addEventListener('mousemove', function(e){
     var rect=canvas.getBoundingClientRect();
     mouse.x=((e.clientX-rect.left)/rect.width)*2-1;
     mouse.y=-((e.clientY-rect.top)/rect.height)*2+1;
     handleHover(e);
-    if (!_orb.drag) return;
-    _orb.theta -= (e.clientX-_orb.lx)*0.008;
-    _orb.phi = Math.max(0.1, Math.min(Math.PI/2-0.05, _orb.phi+(e.clientY-_orb.ly)*0.008));
-    _orb.lx=e.clientX; _orb.ly=e.clientY; updateCameraOrbit();
+    if (!cameraOrbit.drag) return;
+    cameraOrbit.theta -= (e.clientX-cameraOrbit.lx)*0.008;
+    cameraOrbit.phi = Math.max(0.1, Math.min(Math.PI/2-0.05, cameraOrbit.phi+(e.clientY-cameraOrbit.ly)*0.008));
+    cameraOrbit.lx=e.clientX; cameraOrbit.ly=e.clientY; updateCameraOrbit();
   });
   canvas.addEventListener('wheel', function(e){
-    _orb.radius=Math.max(10,Math.min(100,_orb.radius+e.deltaY*0.05)); updateCameraOrbit();
+    cameraOrbit.radius=Math.max(10,Math.min(100,cameraOrbit.radius+e.deltaY*0.05)); updateCameraOrbit();
   });
 }
 
 function updateCameraOrbit() {
-  var r=_orb.radius, t=_orb.theta, p=_orb.phi;
+  var r=cameraOrbit.radius, t=cameraOrbit.theta, p=cameraOrbit.phi;
   camera.position.set(r*Math.sin(p)*Math.sin(t), r*Math.cos(p), r*Math.sin(p)*Math.cos(t));
   camera.lookAt(0,0,0);
 }
 
 function animLoop() {
   animationId = requestAnimationFrame(animLoop);
-  if (autoRotate) { _orb.theta+=0.004; updateCameraOrbit(); }
+  if (autoRotate) { cameraOrbit.theta+=0.004; updateCameraOrbit(); }
   var t=Date.now()*0.001;
   nodeMeshes.forEach(function(m,i){ if(m.userData.pulse) m.scale.setScalar(1+0.08*Math.sin(t*2+i)); });
   renderer.render(scene, camera);
@@ -626,7 +626,7 @@ function handleHover(ev) {
   } else { tt.style.display='none'; }
 }
 
-function resetCamera() { _orb.theta=0.4; _orb.phi=0.45; _orb.radius=45; updateCameraOrbit(); }
+function resetCamera() { cameraOrbit.theta=0.4; cameraOrbit.phi=0.45; cameraOrbit.radius=45; updateCameraOrbit(); }
 function toggleAutoRotate() { autoRotate=!autoRotate; }
 function toggleWireframe() { wireframe=!wireframe; nodeMeshes.forEach(function(m){if(m.material)m.material.wireframe=wireframe;}); }
 
