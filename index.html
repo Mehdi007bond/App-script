@@ -1629,23 +1629,75 @@
                 });
 
                 if (!destinationMap[item.destination]) {
-                    destinationMap[item.destination] = { name: item.destination, total: 0, stockRem: 0, stockPal: 0, palette: 0, days: Array(6).fill(0).map(() => ({s1:0,s2:0,s3:0})), projectsMap: {} };
+                    destinationMap[item.destination] = {
+                        name: item.destination,
+                        total: 0,
+                        stockRem: 0,
+                        stockPal: 0,
+                        palette: 0,
+                        days: Array(6).fill(0).map(() => ({s1:0,s2:0,s3:0})),
+                        projectsMap: {},
+                        totalRemorquesWeek: 0,
+                        pickupOrder: 0,
+                        dockAssignment: item.dockAssignment || 'Q1'
+                    };
                 }
                 let dest = destinationMap[item.destination];
                 if (!dest.projectsMap[item.project]) {
-                    dest.projectsMap[item.project] = { name: item.project, total: 0, stockRem: 0, stockPal: 0, palette: 0, days: Array(6).fill(0).map(() => ({s1:0,s2:0,s3:0})), descriptions: [] };
+                    dest.projectsMap[item.project] = {
+                        name: item.project,
+                        total: 0,
+                        stockRem: 0,
+                        stockPal: 0,
+                        palette: 0,
+                        days: Array(6).fill(0).map(() => ({s1:0,s2:0,s3:0})),
+                        descriptions: [],
+                        totalRemorquesWeek: 0,
+                        pickupOrder: 0,
+                        dockAssignment: item.dockAssignment || 'Q1'
+                    };
                 }
                 let proj = dest.projectsMap[item.project];
                 proj.descriptions.push(item);
-                proj.total += item.totalPlanning; proj.stockRem += item.stockRem; proj.stockPal += item.stockPal; proj.palette += item.palette;
+                proj.total += item.totalPlanning;
+                proj.stockRem += item.stockRem;
+                proj.stockPal += item.stockPal;
+                proj.palette += item.palette;
+                proj.totalRemorquesWeek += item.totalRemorquesWeek;
                 for(let i=0; i<6; i++) { proj.days[i].s1 += item.days[i].s1; proj.days[i].s2 += item.days[i].s2; proj.days[i].s3 += item.days[i].s3; }
-                dest.total += item.totalPlanning; dest.stockRem += item.stockRem; dest.stockPal += item.stockPal; dest.palette += item.palette;
+                dest.total += item.totalPlanning;
+                dest.stockRem += item.stockRem;
+                dest.stockPal += item.stockPal;
+                dest.palette += item.palette;
+                dest.totalRemorquesWeek += item.totalRemorquesWeek;
                 for(let i=0; i<6; i++) { dest.days[i].s1 += item.days[i].s1; dest.days[i].s2 += item.days[i].s2; dest.days[i].s3 += item.days[i].s3; }
-                grandTotal += item.totalPlanning; grandTotalStock += item.stockRem; grandTotalStockPal += item.stockPal; grandTotalPalette += item.palette;
+                grandTotal += item.totalPlanning;
+                grandTotalStock += item.stockRem;
+                grandTotalStockPal += item.stockPal;
+                grandTotalPalette += item.palette;
             });
 
             const groupedData = Object.values(destinationMap).sort((a, b) => b.total - a.total);
             const maxTotal = groupedData.length > 0 ? groupedData[0].total : 1;
+
+            // Calculer l'ordre de pickup pour chaque destination
+            let pickupOrderCounter = 1;
+            groupedData.forEach(dest => {
+                if (dest.totalRemorquesWeek > 0) {
+                    dest.pickupOrder = pickupOrderCounter++;
+                } else {
+                    dest.pickupOrder = 0;
+                }
+                // Calculer l'ordre de pickup pour chaque projet dans la destination
+                let projPickupCounter = 1;
+                Object.values(dest.projectsMap).forEach(proj => {
+                    if (proj.totalRemorquesWeek > 0) {
+                        proj.pickupOrder = projPickupCounter++;
+                    } else {
+                        proj.pickupOrder = 0;
+                    }
+                });
+            });
 
             document.getElementById('kpi-1-value').innerText = grandTotalPalette.toFixed(0);
             document.getElementById('kpi-2-value').innerText = grandTotalStockPal.toFixed(0);
@@ -1667,6 +1719,9 @@
                     <th colspan="3" class="px-2 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center border-slate-200 border-b border-r bg-slate-50">Vendredi</th>
                     <th colspan="3" class="px-2 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider text-center border-slate-200 border-b bg-slate-50">Samedi</th>
                     <th rowspan="2" class="px-4 py-3 text-xs font-semibold text-indigo-600 uppercase tracking-wider text-center bg-indigo-50/50 border-l border-r border-slate-200 shadow-inner">Besoin<br><span class="text-[9px] opacity-75">(Palettes)</span></th>
+                    <th rowspan="2" class="px-3 py-3 text-xs font-semibold text-purple-600 uppercase tracking-wider text-center bg-purple-50/50 border-r border-slate-200 shadow-inner">Total Rem.<br><span class="text-[9px] opacity-75">(Semaine)</span></th>
+                    <th rowspan="2" class="px-3 py-3 text-xs font-semibold text-orange-600 uppercase tracking-wider text-center bg-orange-50/50 border-r border-slate-200 shadow-inner">Ordre<br><span class="text-[9px] opacity-75">Pickup</span></th>
+                    <th rowspan="2" class="px-3 py-3 text-xs font-semibold text-cyan-600 uppercase tracking-wider text-center bg-cyan-50/50 border-r border-slate-200 shadow-inner">Quai<br><span class="text-[9px] opacity-75">Assigné</span></th>
                     <th rowspan="2" class="px-5 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wider w-1/12 bg-slate-50">Part Planning</th>
                 </tr>
                 <tr>
@@ -1682,19 +1737,63 @@
                 dest.days.forEach((day, idx) => {
                     destDaysHtml += `<td class="px-2 py-4 text-center text-xs ${day.s1>0?'text-slate-800 font-semibold':'text-slate-300'} border-l border-slate-100">${day.s1>0?day.s1.toFixed(2):'-'}</td><td class="px-2 py-4 text-center text-xs ${day.s2>0?'text-slate-800 font-semibold':'text-slate-300'}">${day.s2>0?day.s2.toFixed(2):'-'}</td><td class="px-2 py-4 text-center text-xs ${day.s3>0?'text-slate-800 font-semibold':'text-slate-300'} ${idx<5?'border-r border-slate-200':''}">${day.s3>0?day.s3.toFixed(2):'-'}</td>`;
                 });
-                html += `<tr class="group cursor-pointer hover:bg-slate-100 transition-colors bg-white level-1" onclick="toggleLevel(event, 'dest-${destIndex}', 'level-2')"><td class="px-5 py-4 font-medium flex items-center gap-2 text-slate-900 bg-white sticky left-0 z-10 group-hover:bg-slate-100 shadow-[1px_0_0_0_#f1f5f9]"><i data-lucide="chevron-right" class="w-4 h-4 chevron text-slate-400"></i>${dest.name}</td><td class="px-4 py-4 text-center font-bold ${dest.stockPal>0?'text-teal-600':'text-slate-300'} bg-teal-50/20 border-r border-slate-100">${dest.stockPal>0?dest.stockPal.toFixed(0):'-'}</td><td class="px-4 py-4 text-center font-bold ${dest.stockRem>0?'text-emerald-600':'text-slate-300'} bg-emerald-50/20 border-r border-slate-100">${dest.stockRem>0?dest.stockRem.toFixed(2):'-'}</td>${destDaysHtml}<td class="px-4 py-4 text-center font-bold ${dest.palette>0?'text-indigo-600':'text-slate-300'} bg-indigo-50/20 border-l border-r border-slate-100">${dest.palette>0?dest.palette.toFixed(0):'-'}</td><td class="px-5 py-4 border-slate-100"><div class="flex items-center gap-2"><div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden"><div class="bg-blue-500 h-2 rounded-full" style="width:${barWidth}%"></div></div><span class="text-xs text-slate-500 w-8 text-right">${percentage}%</span></div></td></tr>`;
+                html += `<tr class="group cursor-pointer hover:bg-slate-100 transition-colors bg-white level-1" onclick="toggleLevel(event, 'dest-${destIndex}', 'level-2')">
+                    <td class="px-5 py-4 font-medium flex items-center gap-2 text-slate-900 bg-white sticky left-0 z-10 group-hover:bg-slate-100 shadow-[1px_0_0_0_#f1f5f9]">
+                        <i data-lucide="chevron-right" class="w-4 h-4 chevron text-slate-400"></i>${dest.name}
+                    </td>
+                    <td class="px-4 py-4 text-center font-bold ${dest.stockPal>0?'text-teal-600':'text-slate-300'} bg-teal-50/20 border-r border-slate-100">${dest.stockPal>0?dest.stockPal.toFixed(0):'-'}</td>
+                    <td class="px-4 py-4 text-center font-bold ${dest.stockRem>0?'text-emerald-600':'text-slate-300'} bg-emerald-50/20 border-r border-slate-100">${dest.stockRem>0?dest.stockRem.toFixed(2):'-'}</td>
+                    ${destDaysHtml}
+                    <td class="px-4 py-4 text-center font-bold ${dest.palette>0?'text-indigo-600':'text-slate-300'} bg-indigo-50/20 border-l border-r border-slate-100">${dest.palette>0?dest.palette.toFixed(0):'-'}</td>
+                    <td class="px-3 py-4 text-center font-bold ${dest.totalRemorquesWeek>0?'text-purple-600':'text-slate-300'} bg-purple-50/20 border-r border-slate-100">${dest.totalRemorquesWeek>0?dest.totalRemorquesWeek.toFixed(2):'-'}</td>
+                    <td class="px-3 py-4 text-center font-bold ${dest.pickupOrder>0?'text-orange-600':'text-slate-300'} bg-orange-50/20 border-r border-slate-100">${dest.pickupOrder>0?'#'+dest.pickupOrder:'-'}</td>
+                    <td class="px-3 py-4 text-center font-bold ${dest.dockAssignment?'text-cyan-600':'text-slate-300'} bg-cyan-50/20 border-r border-slate-100">${dest.dockAssignment||'-'}</td>
+                    <td class="px-5 py-4 border-slate-100">
+                        <div class="flex items-center gap-2">
+                            <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                <div class="bg-blue-500 h-2 rounded-full" style="width:${barWidth}%"></div>
+                            </div>
+                            <span class="text-xs text-slate-500 w-8 text-right">${percentage}%</span>
+                        </div>
+                    </td>
+                </tr>`;
                 Object.values(dest.projectsMap).forEach((proj, pIdx) => {
                     let projDaysHtml = '';
                     proj.days.forEach((day, idx) => {
                         projDaysHtml += `<td class="px-2 py-3 text-center text-[11px] ${day.s1>0?'text-slate-700 font-medium':'text-slate-300'} border-l border-slate-200/50">${day.s1>0?day.s1.toFixed(2):'-'}</td><td class="px-2 py-3 text-center text-[11px] ${day.s2>0?'text-slate-700 font-medium':'text-slate-300'}">${day.s2>0?day.s2.toFixed(2):'-'}</td><td class="px-2 py-3 text-center text-[11px] ${day.s3>0?'text-slate-700 font-medium':'text-slate-300'} ${idx<5?'border-r border-slate-200':''}">${day.s3>0?day.s3.toFixed(2):'-'}</td>`;
                     });
-                    html += `<tr class="dest-${destIndex} level-2 hidden group cursor-pointer bg-slate-50/80 hover:bg-slate-100/80 transition-colors" onclick="toggleLevel(event, 'dest-proj-${destIndex}-${pIdx}', 'level-3')"><td class="px-5 py-3 pl-10 text-sm font-semibold text-slate-700 flex items-center gap-2 bg-slate-50/80 sticky left-0 shadow-[1px_0_0_0_#f1f5f9]"><i data-lucide="chevron-right" class="w-4 h-4 chevron text-slate-400"></i>${proj.name}</td><td class="px-4 py-3 text-center text-sm font-semibold ${proj.stockPal>0?'text-teal-600':'text-slate-300'} bg-teal-50/20 border-r border-slate-100">${proj.stockPal>0?proj.stockPal.toFixed(0):'-'}</td><td class="px-4 py-3 text-center text-sm font-semibold ${proj.stockRem>0?'text-emerald-600':'text-slate-300'} bg-emerald-50/20 border-r border-slate-100">${proj.stockRem>0?proj.stockRem.toFixed(2):'-'}</td>${projDaysHtml}<td class="px-4 py-3 text-center text-sm font-semibold ${proj.palette>0?'text-indigo-600':'text-slate-300'} bg-indigo-50/20 border-l border-r border-slate-100">${proj.palette>0?proj.palette.toFixed(0):'-'}</td><td class="px-5 py-3 border-slate-200/50"></td></tr>`;
+                    html += `<tr class="dest-${destIndex} level-2 hidden group cursor-pointer bg-slate-50/80 hover:bg-slate-100/80 transition-colors" onclick="toggleLevel(event, 'dest-proj-${destIndex}-${pIdx}', 'level-3')">
+                        <td class="px-5 py-3 pl-10 text-sm font-semibold text-slate-700 flex items-center gap-2 bg-slate-50/80 sticky left-0 shadow-[1px_0_0_0_#f1f5f9]">
+                            <i data-lucide="chevron-right" class="w-4 h-4 chevron text-slate-400"></i>${proj.name}
+                        </td>
+                        <td class="px-4 py-3 text-center text-sm font-semibold ${proj.stockPal>0?'text-teal-600':'text-slate-300'} bg-teal-50/20 border-r border-slate-100">${proj.stockPal>0?proj.stockPal.toFixed(0):'-'}</td>
+                        <td class="px-4 py-3 text-center text-sm font-semibold ${proj.stockRem>0?'text-emerald-600':'text-slate-300'} bg-emerald-50/20 border-r border-slate-100">${proj.stockRem>0?proj.stockRem.toFixed(2):'-'}</td>
+                        ${projDaysHtml}
+                        <td class="px-4 py-3 text-center text-sm font-semibold ${proj.palette>0?'text-indigo-600':'text-slate-300'} bg-indigo-50/20 border-l border-r border-slate-100">${proj.palette>0?proj.palette.toFixed(0):'-'}</td>
+                        <td class="px-3 py-3 text-center text-sm font-semibold ${proj.totalRemorquesWeek>0?'text-purple-600':'text-slate-300'} bg-purple-50/20 border-r border-slate-100">${proj.totalRemorquesWeek>0?proj.totalRemorquesWeek.toFixed(2):'-'}</td>
+                        <td class="px-3 py-3 text-center text-sm font-semibold ${proj.pickupOrder>0?'text-orange-600':'text-slate-300'} bg-orange-50/20 border-r border-slate-100">${proj.pickupOrder>0?'#'+proj.pickupOrder:'-'}</td>
+                        <td class="px-3 py-3 text-center text-sm font-semibold ${proj.dockAssignment?'text-cyan-600':'text-slate-300'} bg-cyan-50/20 border-r border-slate-100">${proj.dockAssignment||'-'}</td>
+                        <td class="px-5 py-3 border-slate-200/50"></td>
+                    </tr>`;
                     proj.descriptions.forEach((desc, dIdx) => {
                         let descDaysHtml = '';
                         desc.days.forEach((day, idx) => {
                             descDaysHtml += `<td class="px-2 py-2 text-center text-[10px] ${day.s1>0?'text-slate-600 font-medium':'text-slate-300'} border-l border-slate-200/50">${day.s1>0?day.s1.toFixed(2):'-'}</td><td class="px-2 py-2 text-center text-[10px] ${day.s2>0?'text-slate-600 font-medium':'text-slate-300'}">${day.s2>0?day.s2.toFixed(2):'-'}</td><td class="px-2 py-2 text-center text-[10px] ${day.s3>0?'text-slate-600 font-medium':'text-slate-300'} ${idx<5?'border-r border-slate-200':''}">${day.s3>0?day.s3.toFixed(2):'-'}</td>`;
                         });
-                        html += `<tr class="dest-${destIndex} dest-proj-${destIndex}-${pIdx} level-3 hidden bg-white hover:bg-slate-50 transition-colors"><td class="px-5 py-2 pl-16 text-xs font-medium text-slate-500 flex items-center gap-2 bg-white sticky left-0 shadow-[1px_0_0_0_#f1f5f9]"><div class="w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0"></div><span class="truncate max-w-[250px] inline-block align-middle" title="${desc.description}">${desc.description || '-'}</span></td><td class="px-4 py-2 text-center text-xs ${desc.stockPal>0?'text-teal-600 font-semibold':'text-slate-300'} border-r border-slate-100">${desc.stockPal>0?desc.stockPal.toFixed(0):'-'}</td><td class="px-4 py-2 text-center text-xs ${desc.stockRem>0?'text-emerald-600 font-semibold':'text-slate-300'} border-r border-slate-100">${desc.stockRem>0?desc.stockRem.toFixed(2):'-'}</td>${descDaysHtml}<td class="px-4 py-2 text-center text-xs ${desc.palette>0?'text-indigo-600 font-semibold':'text-slate-300'} border-l border-r border-slate-100">${desc.palette>0?desc.palette.toFixed(0):'-'}</td><td class="px-5 py-2 border-slate-200/50"></td></tr>`;
+                        html += `<tr class="dest-${destIndex} dest-proj-${destIndex}-${pIdx} level-3 hidden bg-white hover:bg-slate-50 transition-colors">
+                            <td class="px-5 py-2 pl-16 text-xs font-medium text-slate-500 flex items-center gap-2 bg-white sticky left-0 shadow-[1px_0_0_0_#f1f5f9]">
+                                <div class="w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0"></div>
+                                <span class="truncate max-w-[250px] inline-block align-middle" title="${desc.description}">${desc.description || '-'}</span>
+                            </td>
+                            <td class="px-4 py-2 text-center text-xs ${desc.stockPal>0?'text-teal-600 font-semibold':'text-slate-300'} border-r border-slate-100">${desc.stockPal>0?desc.stockPal.toFixed(0):'-'}</td>
+                            <td class="px-4 py-2 text-center text-xs ${desc.stockRem>0?'text-emerald-600 font-semibold':'text-slate-300'} border-r border-slate-100">${desc.stockRem>0?desc.stockRem.toFixed(2):'-'}</td>
+                            ${descDaysHtml}
+                            <td class="px-4 py-2 text-center text-xs ${desc.palette>0?'text-indigo-600 font-semibold':'text-slate-300'} border-l border-r border-slate-100">${desc.palette>0?desc.palette.toFixed(0):'-'}</td>
+                            <td class="px-3 py-2 text-center text-xs ${desc.totalRemorquesWeek>0?'text-purple-600 font-semibold':'text-slate-300'} border-r border-slate-100">${desc.totalRemorquesWeek>0?desc.totalRemorquesWeek.toFixed(2):'-'}</td>
+                            <td class="px-3 py-2 text-center text-xs ${desc.pickupOrder>0?'text-orange-600 font-semibold':'text-slate-300'} border-r border-slate-100">${desc.pickupOrder>0?'#'+desc.pickupOrder:'-'}</td>
+                            <td class="px-3 py-2 text-center text-xs ${desc.dockAssignment?'text-cyan-600 font-semibold':'text-slate-300'} border-r border-slate-100">${desc.dockAssignment||'-'}</td>
+                            <td class="px-5 py-2 border-slate-200/50"></td>
+                        </tr>`;
                     });
                 });
             });
